@@ -5,7 +5,7 @@ import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-const String backendUrl = 'http://192.168.110.81:8000';
+const String backendUrl = 'http://10.0.2.2:8000';
 
 class NewsPage extends StatelessWidget {
   const NewsPage({super.key});

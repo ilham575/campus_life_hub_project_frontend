@@ -121,54 +121,35 @@ class Signup extends StatelessWidget {
       ),
       onPressed: () async {
         bool success = await AuthService().signup(
-          email: _emailController.text,
+          username: _emailController.text, // ใช้ email เป็น username
           password: _passwordController.text,
-          context: context,
+          firebaseUid:
+              _studentIdController.text, // สมมติใช้ student_id เป็น uid
         );
+
         if (success) {
-          // เพิ่มข้อมูลผู้ใช้ใน Firestore
-          final user = AuthService().currentUser;
-          if (user != null) {
-            await FirebaseFirestore.instance
-                .collection('users')
-                .doc(user.uid)
-                .set({
-                  'name': _nameController.text,
-                  'student_id': _studentIdController.text,
-                  'faculty': _facultyController.text,
-                  'year': int.tryParse(_yearController.text) ?? 1,
-                  'profile_picture_url': '',
-                  'notification_settings': {},
-                });
-          }
           showDialog(
             context: context,
             builder: (context) => AlertDialog(
-              backgroundColor: const Color(0xffF7F7F9), // สีพื้นหลัง popup
+              backgroundColor: const Color(0xffF7F7F9),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16), // ขอบมน
-                side: const BorderSide(
-                  color: Colors.black12,
-                  width: 2,
-                ), // สีขอบ
+                borderRadius: BorderRadius.circular(16),
+                side: const BorderSide(color: Colors.black12, width: 2),
               ),
               title: Text(
                 'สมัครสำเร็จ',
                 style: GoogleFonts.raleway(
                   textStyle: const TextStyle(
-                    color: Colors.green, // สีหัวข้อ
+                    color: Colors.green,
                     fontWeight: FontWeight.bold,
-                    fontSize: 24, // ขนาดฟอนต์หัวข้อ
+                    fontSize: 24,
                   ),
                 ),
               ),
               content: Text(
                 'ไปหน้า Login',
                 style: GoogleFonts.raleway(
-                  textStyle: const TextStyle(
-                    color: Colors.black,
-                    fontSize: 18, // ขนาดฟอนต์เนื้อหา
-                  ),
+                  textStyle: const TextStyle(color: Colors.black, fontSize: 18),
                 ),
               ),
               actions: [
@@ -184,8 +165,8 @@ class Signup extends StatelessWidget {
                     'ตกลง',
                     style: GoogleFonts.raleway(
                       textStyle: const TextStyle(
-                        color: Colors.blue, // สีปุ่ม
-                        fontSize: 18, // ขนาดฟอนต์ปุ่ม
+                        color: Colors.blue,
+                        fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
                     ),

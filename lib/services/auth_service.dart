@@ -1,98 +1,69 @@
-import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-import '../pages/home.dart';
-import '../pages/login.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../pages/home.dart';
+import '../pages/login.dart';
+
 class AuthService {
+  final String baseUrl = "http://10.0.2.2:8000"; // สำหรับ Emulator
+
   Future<bool> signup({
-    required String email,
+    required String username,
     required String password,
-    required BuildContext context,
+    required String firebaseUid,
   }) async {
-    try {
-      await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-      return true; // สมัครสำเร็จ
-    } on FirebaseAuthException catch (e) {
-      String message = '';
-      if (e.code == 'weak-password') {
-        message = 'The password provided is too weak.';
-      } else if (e.code == 'email-already-in-use') {
-        message = 'An account already exists with that email.';
-      }
-      Fluttertoast.showToast(
-        msg: message,
-        toastLength: Toast.LENGTH_LONG,
-        gravity: ToastGravity.SNACKBAR,
-        backgroundColor: Colors.black54,
-        textColor: Colors.white,
-        fontSize: 14.0,
-      );
-      return false; // สมัครไม่สำเร็จ
-    } catch (e) {
-      return false;
+    final url = Uri.parse("$baseUrl/auth/register");
+
+    final response = await http.post(
+      url,
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "username": username,
+        "password": password,
+        "firebase_uid": firebaseUid,
+      }),
+    );
+
+    return response.statusCode == 200;
+  }
+
+  Future<bool> signin({
+    required String username,
+    required String password,
+  }) async {
+    final url = Uri.parse("$baseUrl/auth/token");
+
+    final response = await http.post(
+      url,
+      headers: {"Content-Type": "application/x-www-form-urlencoded"},
+      body: {
+        "username": username,
+        "password": password,
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString("token", data["access_token"]);
+      return true;
     }
+    return false;
   }
 
-  Future<void> signin({
-    required String email,
-    required String password,
-    required BuildContext context,
-  }) async {
-    try {
-      final userCredential = await FirebaseAuth.instance
-          .signInWithEmailAndPassword(email: email, password: password);
-
-      // ดึง token จาก Firebase
-      final token = await userCredential.user?.getIdToken();
-
-      if (token != null) {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('token', token);
-      }
-
-      await Future.delayed(const Duration(seconds: 1));
-      if (!context.mounted) return; // เช็คว่า context นี้ยังอยู่ใน widget tree หรือไม่
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (BuildContext context) => const Home()),
-      );
-    } on FirebaseAuthException catch (e) {
-      String message = '';
-      if (e.code == 'invalid-email') {
-        message = 'No user found for that email.';
-      } else if (e.code == 'invalid-credential') {
-        message = 'Wrong password provided for that user.';
-      }
-      Fluttertoast.showToast(
-        msg: message,
-        toastLength: Toast.LENGTH_LONG,
-        gravity: ToastGravity.SNACKBAR,
-        backgroundColor: Colors.black54,
-        textColor: Colors.white,
-        fontSize: 14.0,
-      );
-    } catch (e) {}
-  }
-
-  Future<void> signout({required BuildContext context}) async {
-    await FirebaseAuth.instance.signOut();
-
-    // ลบ token ออกจาก SharedPreferences
+  Future<void> signout(BuildContext context) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('token');
+    await prefs.remove("token"); // ลบ token
 
-    await Future.delayed(const Duration(seconds: 1));
-    if (!context.mounted) return; // เช็คว่า context นี้ยังอยู่ใน widget tree หรือไม่
+    // พากลับไปหน้า Login
+    if (!context.mounted) return;
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (BuildContext context) => Login()),
+      MaterialPageRoute(builder: (context) => Login()),
     );
   }
-
-  User? get currentUser => FirebaseAuth.instance.currentUser;
 }
+

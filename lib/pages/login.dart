@@ -30,7 +30,7 @@ class Login extends StatelessWidget {
         }
         if (snapshot.hasData && snapshot.data == true) {
           // ถ้า login แล้ว ให้ไปหน้าหลัก
-          WidgetsBinding.instance.addPostFrameCallback((_) {  
+          WidgetsBinding.instance.addPostFrameCallback((_) {
             Navigator.pushReplacementNamed(context, '/home');
           });
           return const Scaffold(
@@ -199,12 +199,16 @@ class Login extends StatelessWidget {
         elevation: 0,
       ),
       onPressed: () async {
-        await AuthService().signin(
-          email: _emailController.text,
+        bool success = await AuthService().signin(
+          username: _emailController.text,
           password: _passwordController.text,
-          context: context,
         );
+
+        if (success) {
+          Navigator.pushReplacementNamed(context, '/home');
+        }
       },
+
       child: const Text(
         "Sign In",
         style: TextStyle(

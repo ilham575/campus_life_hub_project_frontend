@@ -57,7 +57,7 @@ class _HomeState extends State<Home> {
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         ),
         onPressed: () async {
-          await AuthService().signout(context: context);
+          await AuthService().signout(context);
         },
         child: Row(
           mainAxisSize: MainAxisSize.min,
