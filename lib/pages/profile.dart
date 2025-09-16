@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -23,79 +24,162 @@ class ProfilePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final userEmail = FirebaseAuth.instance.currentUser?.email ?? '';
     return Scaffold(
-      backgroundColor: Colors.grey[100],
-      appBar: AppBar(
-        title: const Text('Profile'),
-        centerTitle: true,
-        elevation: 0,
-        backgroundColor: Colors.deepPurple,
-      ),
-      body: ValueListenableBuilder<Key>(
-        valueListenable: _fbKey,
-        builder: (context, key, _) {
-          return FutureBuilder<Map<String, dynamic>?>(
-            key: key,
-            future: _fetchProfile(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              if (!snapshot.hasData || snapshot.data == null) {
-                return const Center(child: Text('ไม่พบข้อมูลผู้ใช้'));
-              }
-              final data = snapshot.data!;
-              return Center(
-                child: UserInfoCard(
-                  name: data['name'] ?? '',
-                  studentId: data['student_id'] ?? '',
-                  faculty: data['faculty'] ?? '',
-                  year: data['year']?.toString() ?? '',
-                  email: userEmail,
-                  onEdit: () async {
-                    final result = await showModalBottomSheet<bool>(
-                      context: context,
-                      isScrollControlled: true,
-                      shape: const RoundedRectangleBorder(
-                        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.blue.shade50,
+              Colors.white,
+              Colors.purple.shade50,
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: ValueListenableBuilder<Key>(
+            valueListenable: _fbKey,
+            builder: (context, key, _) {
+              return FutureBuilder<Map<String, dynamic>?>(
+                key: key,
+                future: _fetchProfile(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.purple.shade600),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'กำลังโหลดข้อมูล...',
+                            style: GoogleFonts.kanit(
+                              textStyle: const TextStyle(
+                                color: Colors.grey,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                      builder: (context) {
-                        final nameController = TextEditingController(text: data['name'] ?? '');
-                        final idController = TextEditingController(text: data['student_id'] ?? '');
-                        final facultyController = TextEditingController(text: data['faculty'] ?? '');
-                        final yearController = TextEditingController(text: data['year']?.toString() ?? '');
-                        return EditProfileForm(
-                          nameController: nameController,
-                          idController: idController,
-                          facultyController: facultyController,
-                          yearController: yearController,
-                          onSave: () async {
-                            final user = FirebaseAuth.instance.currentUser;
-                            if (user != null) {
-                              await FirebaseFirestore.instance
-                                  .collection('users')
-                                  .doc(user.uid)
-                                  .update({
-                                    'name': nameController.text,
-                                    'student_id': idController.text,
-                                    'faculty': facultyController.text,
-                                    'year': int.tryParse(yearController.text) ?? yearController.text,
-                                  });
-                            }
-                            Navigator.pop(context, true); // ส่งค่า true กลับไป
-                          },
-                        );
-                      },
                     );
-                    if (result == true) {
-                      // เปลี่ยน key เพื่อ trigger rebuild
-                      _fbKey.value = UniqueKey();
-                    }
-                  },
-                ),
+                  }
+                  if (!snapshot.hasData || snapshot.data == null) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.person_off_outlined,
+                            size: 80,
+                            color: Colors.grey.shade400,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'ไม่พบข้อมูลผู้ใช้',
+                            style: GoogleFonts.kanit(
+                              textStyle: TextStyle(
+                                color: Colors.grey.shade600,
+                                fontSize: 18,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                  final data = snapshot.data!;
+                  return SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        // Header Section
+                        Container(
+                          padding: const EdgeInsets.all(24),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [Colors.purple.shade600, Colors.blue.shade600],
+                                  ),
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: const Icon(
+                                  Icons.person,
+                                  color: Colors.white,
+                                  size: 28,
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Text(
+                                'โปรไฟล์ของฉัน',
+                                style: GoogleFonts.kanit(
+                                  textStyle: const TextStyle(
+                                    fontSize: 26,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        
+                        UserInfoCard(
+                          name: data['name'] ?? '',
+                          studentId: data['student_id'] ?? '',
+                          faculty: data['faculty'] ?? '',
+                          year: data['year']?.toString() ?? '',
+                          email: userEmail,
+                          onEdit: () async {
+                            final result = await showModalBottomSheet<bool>(
+                              context: context,
+                              isScrollControlled: true,
+                              backgroundColor: Colors.transparent,
+                              builder: (context) {
+                                final nameController = TextEditingController(text: data['name'] ?? '');
+                                final idController = TextEditingController(text: data['student_id'] ?? '');
+                                final facultyController = TextEditingController(text: data['faculty'] ?? '');
+                                final yearController = TextEditingController(text: data['year']?.toString() ?? '');
+                                return EditProfileForm(
+                                  nameController: nameController,
+                                  idController: idController,
+                                  facultyController: facultyController,
+                                  yearController: yearController,
+                                  onSave: () async {
+                                    final user = FirebaseAuth.instance.currentUser;
+                                    if (user != null) {
+                                      await FirebaseFirestore.instance
+                                          .collection('users')
+                                          .doc(user.uid)
+                                          .update({
+                                            'name': nameController.text,
+                                            'student_id': idController.text,
+                                            'faculty': facultyController.text,
+                                            'year': int.tryParse(yearController.text) ?? yearController.text,
+                                          });
+                                    }
+                                    Navigator.pop(context, true);
+                                  },
+                                );
+                              },
+                            );
+                            if (result == true) {
+                              _fbKey.value = UniqueKey();
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                  );
+                },
               );
             },
-          );
-        },
+          ),
+        ),
       ),
     );
   }
@@ -121,68 +205,205 @@ class UserInfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 8,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 2,
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(32.0),
+        padding: const EdgeInsets.all(28.0),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           children: [
-            CircleAvatar(
-              radius: 50,
-              backgroundColor: Colors.deepPurple.shade100,
+            // Profile Avatar
+            Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Colors.purple.shade400,
+                    Colors.blue.shade400,
+                  ],
+                ),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.purple.withOpacity(0.3),
+                    spreadRadius: 2,
+                    blurRadius: 15,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+              ),
               child: const Icon(
                 Icons.person,
-                size: 50,
-                color: Colors.deepPurple,
+                size: 60,
+                color: Colors.white,
               ),
             ),
             const SizedBox(height: 24),
+            
+            // Name
             Text(
-              name,
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Colors.deepPurple,
+              name.isNotEmpty ? name : 'ไม่ระบุชื่อ',
+              style: GoogleFonts.kanit(
+                textStyle: const TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.black87,
+                ),
               ),
+              textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 8),
-            Text(
-              'รหัสนักศึกษา: $studentId',
-              style: TextStyle(fontSize: 16, color: Colors.grey[700]),
+            const SizedBox(height: 20),
+            
+            // Info Cards
+            _buildInfoCard(
+              icon: Icons.badge_outlined,
+              title: 'รหัสนักศึกษา',
+              value: studentId.isNotEmpty ? studentId : 'ไม่ระบุ',
+              color: Colors.blue,
             ),
-            Text(
-              'คณะ: $faculty',
-              style: TextStyle(fontSize: 16, color: Colors.grey[700]),
+            const SizedBox(height: 12),
+            _buildInfoCard(
+              icon: Icons.school_outlined,
+              title: 'คณะ',
+              value: faculty.isNotEmpty ? faculty : 'ไม่ระบุ',
+              color: Colors.green,
             ),
-            Text(
-              'ชั้นปี: $year',
-              style: TextStyle(fontSize: 16, color: Colors.grey[700]),
+            const SizedBox(height: 12),
+            _buildInfoCard(
+              icon: Icons.grade_outlined,
+              title: 'ชั้นปี',
+              value: year.isNotEmpty ? 'ปีที่ $year' : 'ไม่ระบุ',
+              color: Colors.orange,
             ),
-            Text(
-              email,
-              style: TextStyle(fontSize: 16, color: Colors.grey[700]),
+            const SizedBox(height: 12),
+            _buildInfoCard(
+              icon: Icons.email_outlined,
+              title: 'อีเมล',
+              value: email,
+              color: Colors.purple,
             ),
+            
             const SizedBox(height: 32),
-            SizedBox(
+            
+            // Edit Button
+            Container(
               width: double.infinity,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.purple.shade600, Colors.blue.shade600],
+                ),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.purple.withOpacity(0.3),
+                    spreadRadius: 1,
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
               child: ElevatedButton.icon(
                 onPressed: onEdit,
-                icon: const Icon(Icons.edit),
-                label: const Text('แก้ไขข้อมูล'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color.fromARGB(255, 183, 162, 219),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                icon: const Icon(Icons.edit_outlined, color: Colors.white),
+                label: Text(
+                  'แก้ไขข้อมูล',
+                  style: GoogleFonts.kanit(
+                    textStyle: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
                   ),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                 ),
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildInfoCard({
+    required IconData icon,
+    required String title,
+    required String value,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: color.withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              icon,
+              color: color,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: GoogleFonts.kanit(
+                    textStyle: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ),
+                Text(
+                  value,
+                  style: GoogleFonts.kanit(
+                    textStyle: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -206,56 +427,159 @@ class EditProfileForm extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 24,
-        right: 24,
-        top: 24,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Text(
-            'แก้ไขข้อมูลโปรไฟล์',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: nameController,
-            decoration: const InputDecoration(labelText: 'ชื่อ'),
-          ),
-          TextField(
-            controller: idController,
-            decoration: const InputDecoration(labelText: 'รหัสนักศึกษา'),
-          ),
-          TextField(
-            controller: facultyController,
-            decoration: const InputDecoration(labelText: 'คณะ'),
-          ),
-          TextField(
-            controller: yearController,
-            decoration: const InputDecoration(labelText: 'ชั้นปี'),
-          ),
-          const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: onSave,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.deepPurple,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: const Text(
-                'บันทึก',
-                style: TextStyle(color: Colors.white),
+      child: Padding(
+        padding: EdgeInsets.only(
+          left: 24,
+          right: 24,
+          top: 24,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle Bar
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
               ),
             ),
+            const SizedBox(height: 20),
+            
+            // Title
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.purple.shade600, Colors.blue.shade600],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.edit_outlined,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'แก้ไขข้อมูลโปรไฟล์',
+                  style: GoogleFonts.kanit(
+                    textStyle: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            
+            // Form Fields
+            _buildTextField(
+              controller: nameController,
+              label: 'ชื่อ-นามสกุล',
+              icon: Icons.person_outline,
+            ),
+            const SizedBox(height: 16),
+            _buildTextField(
+              controller: idController,
+              label: 'รหัสนักศึกษา',
+              icon: Icons.badge_outlined,
+            ),
+            const SizedBox(height: 16),
+            _buildTextField(
+              controller: facultyController,
+              label: 'คณะ',
+              icon: Icons.school_outlined,
+            ),
+            const SizedBox(height: 16),
+            _buildTextField(
+              controller: yearController,
+              label: 'ชั้นปี',
+              icon: Icons.grade_outlined,
+            ),
+            const SizedBox(height: 32),
+            
+            // Save Button
+            Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.purple.shade600, Colors.blue.shade600],
+                ),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.purple.withOpacity(0.3),
+                    spreadRadius: 1,
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: ElevatedButton.icon(
+                onPressed: onSave,
+                icon: const Icon(Icons.save_outlined, color: Colors.white),
+                label: Text(
+                  'บันทึกข้อมูล',
+                  style: GoogleFonts.kanit(
+                    textStyle: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: TextField(
+        controller: controller,
+        style: GoogleFonts.kanit(),
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: GoogleFonts.kanit(
+            textStyle: TextStyle(color: Colors.grey.shade600),
           ),
-        ],
+          prefixIcon: Icon(icon, color: Colors.purple.shade600),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        ),
       ),
     );
   }
