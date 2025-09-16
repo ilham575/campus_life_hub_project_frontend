@@ -2,8 +2,8 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 const String backendUrl = 'http://10.0.2.2:8000';
 
@@ -95,28 +95,44 @@ class _NewsCardListState extends State<NewsCardList> with TickerProviderStateMix
 
   @override
   void dispose() {
-    _animationController.dispose(); // ไม่ต้องใช้ ? แล้ว
+    _animationController.dispose();
     super.dispose();
+  }
+
+  // ดึง JWT Token จาก SharedPreferences
+  Future<String?> _getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString("token");
+  }
+
+  // สร้าง headers สำหรับ API calls
+  Future<Map<String, String>> _getHeaders() async {
+    final token = await _getToken();
+    final headers = {"Content-Type": "application/json"};
+    
+    if (token != null) {
+      headers["Authorization"] = "Bearer $token";
+    }
+    
+    return headers;
   }
 
   Future<void> loadData() async {
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        setState(() {
-          isLoading = false;
-        });
-        return;
-      }
-      
-      final userId = user.uid;
+      setState(() {
+        isLoading = true;
+      });
+
+      // ดึงข้อมูลประกาศ
       final anns = await fetchAnnouncements();
       
+      // ดึง bookmarks (ใช้ JWT token)
       List<int> bookmarks = [];
       try {
-        bookmarks = await fetchBookmarks(userId);
+        bookmarks = await fetchBookmarks();
       } catch (e) {
-        print('No bookmarks found for user, using empty list');
+        print('Error fetching bookmarks: $e');
+        // ไม่ต้อง throw error เพราะ bookmarks ไม่จำเป็น
       }
 
       if (mounted) {
@@ -125,7 +141,7 @@ class _NewsCardListState extends State<NewsCardList> with TickerProviderStateMix
           bookmarkedAnnouncementIds = bookmarks;
           isLoading = false;
         });
-        _animationController.forward(); // ไม่ต้องใช้ ? แล้ว
+        _animationController.forward();
       }
     } catch (e) {
       print('Error loading data: $e');
@@ -133,30 +149,47 @@ class _NewsCardListState extends State<NewsCardList> with TickerProviderStateMix
         setState(() {
           isLoading = false;
         });
+        
+        // แสดง error message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('ไม่สามารถโหลดข้อมูลได้: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
 
   Future<List<Map<String, dynamic>>> fetchAnnouncements() async {
     final response = await http.get(Uri.parse('$backendUrl/announcements/'));
+    
     if (response.statusCode == 200) {
       final List data = json.decode(response.body);
       return data.cast<Map<String, dynamic>>();
     }
-    throw Exception('Failed to load announcements');
+    
+    throw Exception('Failed to load announcements: ${response.statusCode}');
   }
 
-  Future<List<int>> fetchBookmarks(String userId) async {
+  Future<List<int>> fetchBookmarks() async {
     try {
-      print('Fetching bookmarks for user: $userId');
-      final response = await http.get(Uri.parse('$backendUrl/bookmarks/?user_id=$userId'));
-      print('Bookmark response status: ${response.statusCode}');
-      print('Bookmark response body: ${response.body}');
+      final headers = await _getHeaders();
+      final response = await http.get(
+        Uri.parse('$backendUrl/bookmarks/'),
+        headers: headers,
+      );
+      
+      print('Bookmarks response status: ${response.statusCode}');
+      print('Bookmarks response body: ${response.body}');
       
       if (response.statusCode == 200) {
         final List data = json.decode(response.body);
         return data.map<int>((b) => b['announcement_id'] as int).toList();
+      } else if (response.statusCode == 401) {
+        throw Exception('กรุณาเข้าสู่ระบบใหม่');
       }
+      
       throw Exception('HTTP ${response.statusCode}: ${response.body}');
     } catch (e) {
       print('Error fetching bookmarks: $e');
@@ -164,36 +197,79 @@ class _NewsCardListState extends State<NewsCardList> with TickerProviderStateMix
     }
   }
 
-  Future<void> addBookmark(String userId, int announcementId) async {
-    await http.post(
-      Uri.parse('$backendUrl/bookmarks/'),
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode({'user_id': userId, 'announcement_id': announcementId}),
-    );
+  Future<void> addBookmark(int announcementId) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.post(
+        Uri.parse('$backendUrl/bookmarks/'),
+        headers: headers,
+        body: json.encode({'announcement_id': announcementId}),
+      );
+      
+      if (response.statusCode != 200) {
+        throw Exception('Failed to add bookmark: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error adding bookmark: $e');
+      throw Exception('ไม่สามารถบันทึกได้: $e');
+    }
   }
 
-  Future<void> removeBookmark(String userId, int announcementId) async {
-    final response = await http.get(Uri.parse('$backendUrl/bookmarks/?user_id=$userId&announcement_id=$announcementId'));
-    if (response.statusCode == 200) {
-      final List data = json.decode(response.body);
-      if (data.isNotEmpty) {
-        final bookmarkId = data[0]['id'];
-        await http.delete(Uri.parse('$backendUrl/bookmarks/$bookmarkId'));
+  Future<void> removeBookmark(int announcementId) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.delete(
+        Uri.parse('$backendUrl/bookmarks/by-announcement/$announcementId'),
+        headers: headers,
+      );
+      
+      if (response.statusCode != 200) {
+        throw Exception('Failed to remove bookmark: ${response.statusCode}');
       }
+    } catch (e) {
+      print('Error removing bookmark: $e');
+      throw Exception('ไม่สามารถยกเลิกการบันทึกได้: $e');
     }
   }
 
   Future<void> toggleBookmark(int announcementId) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-    final userId = user.uid;
+    try {
+      final token = await _getToken();
+      if (token == null) {
+        return; // ไม่แสดง message
+      }
 
-    if (bookmarkedAnnouncementIds.contains(announcementId)) {
-      await removeBookmark(userId, announcementId);
-    } else {
-      await addBookmark(userId, announcementId);
+      // เก็บสถานะเดิมไว้ก่อน
+      final wasBookmarked = bookmarkedAnnouncementIds.contains(announcementId);
+      
+      // อัพเดต UI ทันที (Optimistic Update)
+      setState(() {
+        if (wasBookmarked) {
+          bookmarkedAnnouncementIds.remove(announcementId);
+        } else {
+          bookmarkedAnnouncementIds.add(announcementId);
+        }
+      });
+
+      // ทำงาน API ใน background
+      if (wasBookmarked) {
+        await removeBookmark(announcementId);
+      } else {
+        await addBookmark(announcementId);
+      }
+      
+    } catch (e) {
+      // กรณี error ให้ revert UI กลับเป็นสถานะเดิม
+      setState(() {
+        if (bookmarkedAnnouncementIds.contains(announcementId)) {
+          bookmarkedAnnouncementIds.remove(announcementId);
+        } else {
+          bookmarkedAnnouncementIds.add(announcementId);
+        }
+      });
+      
+      print('Bookmark error: $e');
     }
-    await loadData();
   }
 
   Color _getCategoryColor(String category) {
@@ -304,6 +380,14 @@ class _NewsCardListState extends State<NewsCardList> with TickerProviderStateMix
                     ),
                   ),
                 ),
+                IconButton(
+                  onPressed: loadData,
+                  icon: Icon(
+                    Icons.refresh,
+                    color: Colors.grey.shade600,
+                  ),
+                  tooltip: 'รีเฟรชข้อมูล',
+                ),
               ],
             ),
           ),
@@ -331,31 +415,40 @@ class _NewsCardListState extends State<NewsCardList> with TickerProviderStateMix
                             ),
                           ),
                         ),
+                        const SizedBox(height: 16),
+                        ElevatedButton.icon(
+                          onPressed: loadData,
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('รีเฟรชข้อมูล'),
+                        ),
                       ],
                     ),
                   )
-                : ListView.builder(
-                    itemCount: filtered.length,
-                    itemBuilder: (context, index) {
-                      final doc = filtered[index];
-                      final docId = doc['id'] as int;
-                      final isSaved = bookmarkedAnnouncementIds.contains(docId);
-                      final categoryColor = _getCategoryColor(doc['category'] ?? '');
+                : RefreshIndicator(
+                    onRefresh: loadData,
+                    child: ListView.builder(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      itemCount: filtered.length,
+                      itemBuilder: (context, index) {
+                        final doc = filtered[index];
+                        final docId = doc['id'] as int;
+                        final isSaved = bookmarkedAnnouncementIds.contains(docId);
+                        final categoryColor = _getCategoryColor(doc['category'] ?? '');
 
-                      // ไม่ต้องตรวจสอบ null แล้ว
-                      return AnimatedBuilder(
-                        animation: _animationController,
-                        builder: (context, child) {
-                          return Transform.translate(
-                            offset: Offset(0, 50 * (1 - _animationController.value)),
-                            child: Opacity(
-                              opacity: _animationController.value,
-                              child: _buildNewsCard(doc, docId, isSaved, categoryColor),
-                            ),
-                          );
-                        },
-                      );
-                    },
+                        return AnimatedBuilder(
+                          animation: _animationController,
+                          builder: (context, child) {
+                            return Transform.translate(
+                              offset: Offset(0, 50 * (1 - _animationController.value)),
+                              child: Opacity(
+                                opacity: _animationController.value,
+                                child: _buildNewsCard(doc, docId, isSaved, categoryColor),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
                   ),
           ),
         ],
@@ -452,6 +545,17 @@ class _NewsCardListState extends State<NewsCardList> with TickerProviderStateMix
                       ),
                     ),
                   ),
+                  const Spacer(),
+                  if (doc['created_at'] != null)
+                    Text(
+                      doc['created_at'].toString().split('T')[0],
+                      style: GoogleFonts.kanit(
+                        textStyle: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ],

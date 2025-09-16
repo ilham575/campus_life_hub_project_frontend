@@ -313,14 +313,14 @@ class _HomeState extends State<Home> {
                     ),
                     const Spacer(),
                     // Refresh button
-                    IconButton(
-                      onPressed: _loadCurrentUser,
-                      icon: Icon(
-                        Icons.refresh,
-                        color: Colors.deepPurple.shade700,
-                      ),
-                      tooltip: 'รีเฟรชข้อมูล',
-                    ),
+                    // IconButton(
+                    //   onPressed: _loadCurrentUser,
+                    //   icon: Icon(
+                    //     Icons.refresh,
+                    //     color: Colors.deepPurple.shade700,
+                    //   ),
+                    //   tooltip: 'รีเฟรชข้อมูล',
+                    // ),
                   ],
                 ),
                 const SizedBox(height: 16),

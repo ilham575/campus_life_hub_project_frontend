@@ -21,12 +21,12 @@ class AuthService {
     final url = Uri.parse("$baseUrl/auth/register");
 
     // Debug: แสดงข้อมูลที่จะส่ง
-    print('Sending signup data:');
-    print('Username: $username');
-    print('Name: $name');
-    print('Student ID: $studentId');
-    print('Faculty: $faculty');
-    print('Year: $year');
+    // print('Sending signup data:');
+    // print('Username: $username');
+    // print('Name: $name');
+    // print('Student ID: $studentId');
+    // print('Faculty: $faculty');
+    // print('Year: $year');
 
     final response = await http.post(
       url,
@@ -41,8 +41,8 @@ class AuthService {
       }),
     );
 
-    print('Response status: ${response.statusCode}');
-    print('Response body: ${response.body}');
+    // print('Response status: ${response.statusCode}');
+    // print('Response body: ${response.body}');
 
     if (response.statusCode == 200) {
       print('Signup successful');
