@@ -3,7 +3,7 @@ import 'package:campus_life_hub/services/auth_service.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+// import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Signup extends StatelessWidget {
   Signup({super.key});
@@ -120,67 +120,118 @@ class Signup extends StatelessWidget {
         elevation: 0,
       ),
       onPressed: () async {
-        bool success = await AuthService().signup(
-          username: _emailController.text, // ใช้ email เป็น username
-          password: _passwordController.text,
-          firebaseUid:
-              _studentIdController.text, // สมมติใช้ student_id เป็น uid
+        // ตรวจสอบข้อมูลจำเป็น
+        if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('กรุณากรอกอีเมลและรหัสผ่าน'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+
+        // แสดง loading
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const Center(
+            child: CircularProgressIndicator(),
+          ),
         );
 
-        if (success) {
-          showDialog(
-            context: context,
-            builder: (context) => AlertDialog(
-              backgroundColor: const Color(0xffF7F7F9),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: const BorderSide(color: Colors.black12, width: 2),
-              ),
-              title: Text(
-                'สมัครสำเร็จ',
-                style: GoogleFonts.raleway(
-                  textStyle: const TextStyle(
-                    color: Colors.green,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 24,
+        try {
+          bool success = await AuthService().signup(
+            username: _emailController.text,
+            password: _passwordController.text,
+            name: _nameController.text.isNotEmpty ? _nameController.text : null,
+            studentId: _studentIdController.text.isNotEmpty ? _studentIdController.text : null,
+            faculty: _facultyController.text.isNotEmpty ? _facultyController.text : null,
+            year: _yearController.text.isNotEmpty ? int.tryParse(_yearController.text) : null,
+          );
+
+          // ปิด loading dialog
+          if (context.mounted) Navigator.pop(context);
+
+          if (success) {
+            if (context.mounted) {
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  backgroundColor: const Color(0xffF7F7F9),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: const BorderSide(color: Colors.black12, width: 2),
                   ),
-                ),
-              ),
-              content: Text(
-                'ไปหน้า Login',
-                style: GoogleFonts.raleway(
-                  textStyle: const TextStyle(color: Colors.black, fontSize: 18),
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (context) => Login()),
-                    );
-                  },
-                  child: Text(
-                    'ตกลง',
+                  title: Text(
+                    'สมัครสำเร็จ',
                     style: GoogleFonts.raleway(
                       textStyle: const TextStyle(
-                        color: Colors.blue,
-                        fontSize: 18,
+                        color: Colors.green,
                         fontWeight: FontWeight.bold,
+                        fontSize: 24,
                       ),
                     ),
                   ),
+                  content: Text(
+                    'ข้อมูลของคุณถูกบันทึกแล้ว\nไปหน้า Login เพื่อเข้าสู่ระบบ',
+                    style: GoogleFonts.raleway(
+                      textStyle: const TextStyle(color: Colors.black, fontSize: 16),
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(builder: (context) => Login()),
+                        );
+                      },
+                      child: Text(
+                        'ไปหน้า Login',
+                        style: GoogleFonts.raleway(
+                          textStyle: const TextStyle(
+                            color: Colors.blue,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          );
+              );
+            }
+          } else {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('ไม่สามารถสมัครได้ กรุณาตรวจสอบข้อมูลและลองใหม่'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
+          }
+        } catch (e) {
+          // ปิด loading dialog
+          if (context.mounted) Navigator.pop(context);
+          
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('เกิดข้อผิดพลาด: $e'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
         }
       },
       child: const Text(
         "Sign Up",
         style: TextStyle(
-          color: Colors.white, // เปลี่ยนเป็นสีที่ต้องการ เช่น Colors.blue
+          color: Colors.white,
           fontWeight: FontWeight.bold,
           fontSize: 18,
         ),

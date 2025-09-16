@@ -8,14 +8,25 @@ import '../pages/home.dart';
 import '../pages/login.dart';
 
 class AuthService {
-  final String baseUrl = "http://10.0.2.2:8000"; // สำหรับ Emulator
+  final String baseUrl = "http://10.0.2.2:8000";
 
   Future<bool> signup({
     required String username,
     required String password,
-    required String firebaseUid,
+    String? name,
+    String? studentId,
+    String? faculty,
+    int? year,
   }) async {
     final url = Uri.parse("$baseUrl/auth/register");
+
+    // Debug: แสดงข้อมูลที่จะส่ง
+    print('Sending signup data:');
+    print('Username: $username');
+    print('Name: $name');
+    print('Student ID: $studentId');
+    print('Faculty: $faculty');
+    print('Year: $year');
 
     final response = await http.post(
       url,
@@ -23,14 +34,26 @@ class AuthService {
       body: jsonEncode({
         "username": username,
         "password": password,
-        "firebase_uid": firebaseUid,
+        "name": name,
+        "student_id": studentId,
+        "faculty": faculty,
+        "year": year,
       }),
     );
 
-    return response.statusCode == 200;
+    print('Response status: ${response.statusCode}');
+    print('Response body: ${response.body}');
+
+    if (response.statusCode == 200) {
+      print('Signup successful');
+      return true;
+    } else {
+      print('Signup failed: ${response.statusCode} - ${response.body}');
+      return false;
+    }
   }
 
-  Future<bool> signin({
+  Future<Map<String, dynamic>?> signin({
     required String username,
     required String password,
   }) async {
@@ -48,22 +71,114 @@ class AuthService {
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
       final prefs = await SharedPreferences.getInstance();
+      
+      // เก็บ token และ user data
       await prefs.setString("token", data["access_token"]);
-      return true;
+      await prefs.setString("user_data", jsonEncode(data["user"]));
+      
+      print('Login successful for user: ${data["user"]["username"]}');
+      return data["user"];
+    } else {
+      print('Login failed: ${response.statusCode} - ${response.body}');
+      return null;
     }
+  }
+
+  Future<Map<String, dynamic>?> getCurrentUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString("token");
+    
+    if (token == null) {
+      print('No token found');
+      return null;
+    }
+
+    try {
+      final response = await http.get(
+        Uri.parse("$baseUrl/auth/me"),
+        headers: {
+          "Authorization": "Bearer $token",
+          "Content-Type": "application/json",
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final userData = jsonDecode(response.body);
+        // อัพเดต user data ใน SharedPreferences
+        await prefs.setString("user_data", jsonEncode(userData));
+        print('Current user: ${userData["username"]}');
+        return userData;
+      } else if (response.statusCode == 401) {
+        // Token หมดอายุ ให้ logout
+        await signout();
+        return null;
+      }
+    } catch (e) {
+      print('Error getting current user: $e');
+    }
+    
+    return null;
+  }
+
+  Future<bool> updateProfile({
+    String? name,
+    String? studentId,
+    String? faculty,
+    int? year,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString("token");
+    
+    if (token == null) return false;
+
+    try {
+      final response = await http.put(
+        Uri.parse("$baseUrl/auth/me"),
+        headers: {
+          "Authorization": "Bearer $token",
+          "Content-Type": "application/json",
+        },
+        body: jsonEncode({
+          "name": name,
+          "student_id": studentId,
+          "faculty": faculty,
+          "year": year,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final userData = jsonDecode(response.body);
+        // อัพเดต user data ใน SharedPreferences
+        await prefs.setString("user_data", jsonEncode(userData));
+        print('Profile updated successfully');
+        return true;
+      }
+    } catch (e) {
+      print('Error updating profile: $e');
+    }
+    
     return false;
   }
 
-  Future<void> signout(BuildContext context) async {
+  Future<bool> isLoggedIn() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove("token"); // ลบ token
+    final token = prefs.getString("token");
+    return token != null && token.isNotEmpty;
+  }
 
-    // พากลับไปหน้า Login
-    if (!context.mounted) return;
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => Login()),
-    );
+  Future<void> signout([BuildContext? context]) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove("token");
+    await prefs.remove("user_data");
+    
+    print('User signed out');
+
+    if (context != null && context.mounted) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => Login()),
+      );
+    }
   }
 }
 

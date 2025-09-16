@@ -1,5 +1,4 @@
 import 'package:campus_life_hub/services/auth_service.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:campus_life_hub/pages/profile.dart';
@@ -19,6 +18,44 @@ class Home extends StatefulWidget {
 
 class _HomeState extends State<Home> {
   int _selectedIndex = 0;
+  String? _currentUserEmail;
+  String? _currentUserName;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCurrentUser();
+  }
+
+  Future<void> _loadCurrentUser() async {
+    try {
+      final userData = await AuthService().getCurrentUser();
+      if (userData != null) {
+        setState(() {
+          _currentUserEmail = userData['username'] ?? '';
+          _currentUserName = userData['name'] ?? '';
+          _isLoading = false;
+        });
+      } else {
+        // ถ้าไม่มีข้อมูล user หรือ token หมดอายุ
+        setState(() {
+          _isLoading = false;
+        });
+        if (mounted) {
+          await AuthService().signout(context);
+        }
+      }
+    } catch (e) {
+      print('Error loading current user: $e');
+      setState(() {
+        _isLoading = false;
+      });
+      if (mounted) {
+        await AuthService().signout(context);
+      }
+    }
+  }
 
   void _onItemTapped(int index) {
     if (index == 1) {
@@ -80,6 +117,149 @@ class _HomeState extends State<Home> {
     );
   }
 
+  Widget _buildUserHeader() {
+    if (_isLoading) {
+      return Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.blue.shade600, Colors.purple.shade600],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.blue.withOpacity(0.3),
+              spreadRadius: 2,
+              blurRadius: 15,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.3),
+                    width: 2,
+                  ),
+                ),
+                child: const Icon(
+                  Icons.person,
+                  size: 32,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'กำลังโหลด...',
+                      style: GoogleFonts.kanit(
+                        textStyle: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 22,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      strokeWidth: 2,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.blue.shade600, Colors.purple.shade600],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.blue.withOpacity(0.3),
+            spreadRadius: 2,
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.3),
+                  width: 2,
+                ),
+              ),
+              child: const Icon(
+                Icons.person,
+                size: 32,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _currentUserName != null && _currentUserName!.isNotEmpty
+                        ? 'สวัสดี ${_currentUserName}! 👋'
+                        : 'สวัสดี! 👋',
+                    style: GoogleFonts.kanit(
+                      textStyle: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 22,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _currentUserEmail ?? 'ไม่ระบุอีเมล',
+                    style: GoogleFonts.kanit(
+                      textStyle: TextStyle(
+                        color: Colors.white.withOpacity(0.9),
+                        fontWeight: FontWeight.w400,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            _logout(context),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final List<Widget> _pages = [
@@ -101,78 +281,8 @@ class _HomeState extends State<Home> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header Card
-                Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Colors.blue.shade600, Colors.purple.shade600],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.blue.withOpacity(0.3),
-                        spreadRadius: 2,
-                        blurRadius: 15,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: Colors.white.withOpacity(0.3),
-                              width: 2,
-                            ),
-                          ),
-                          child: const Icon(
-                            Icons.person,
-                            size: 32,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'สวัสดี! 👋',
-                                style: GoogleFonts.kanit(
-                                  textStyle: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 22,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                FirebaseAuth.instance.currentUser?.email ?? '',
-                                style: GoogleFonts.kanit(
-                                  textStyle: TextStyle(
-                                    color: Colors.white.withOpacity(0.9),
-                                    fontWeight: FontWeight.w400,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        _logout(context),
-                      ],
-                    ),
-                  ),
-                ),
+                // Header Card - ใช้ widget แยกต่างหาก
+                _buildUserHeader(),
                 const SizedBox(height: 32),
                 
                 // News Section Header
@@ -200,6 +310,16 @@ class _HomeState extends State<Home> {
                           fontSize: 20,
                         ),
                       ),
+                    ),
+                    const Spacer(),
+                    // Refresh button
+                    IconButton(
+                      onPressed: _loadCurrentUser,
+                      icon: Icon(
+                        Icons.refresh,
+                        color: Colors.deepPurple.shade700,
+                      ),
+                      tooltip: 'รีเฟรชข้อมูล',
                     ),
                   ],
                 ),

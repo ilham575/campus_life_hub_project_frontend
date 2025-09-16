@@ -12,9 +12,7 @@ class Login extends StatelessWidget {
   final TextEditingController _passwordController = TextEditingController();
 
   Future<bool> checkLogin() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
-    return token != null && token.isNotEmpty;
+    return await AuthService().isLoggedIn();
   }
 
   @override
@@ -23,21 +21,20 @@ class Login extends StatelessWidget {
       future: checkLogin(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          // กำลังโหลด
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
           );
         }
         if (snapshot.hasData && snapshot.data == true) {
-          // ถ้า login แล้ว ให้ไปหน้าหลัก
           WidgetsBinding.instance.addPostFrameCallback((_) {
             Navigator.pushReplacementNamed(context, '/home');
           });
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
-          ); // หรือ widget เปล่า ๆ
+          );
         }
-        // ถ้ายังไม่ได้ login แสดงหน้า login ปกติ
+
+        // แสดงหน้า login ปกติ
         return Scaffold(
           backgroundColor: Colors.white,
           resizeToAvoidBottomInset: true,
@@ -199,20 +196,65 @@ class Login extends StatelessWidget {
         elevation: 0,
       ),
       onPressed: () async {
-        bool success = await AuthService().signin(
-          username: _emailController.text,
-          password: _passwordController.text,
+        // ตรวจสอบว่ากรอกข้อมูลครบ
+        if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('กรุณากรอกอีเมลและรหัสผ่าน')),
+          );
+          return;
+        }
+
+        // แสดง loading
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const Center(
+            child: CircularProgressIndicator(),
+          ),
         );
 
-        if (success) {
-          Navigator.pushReplacementNamed(context, '/home');
+        try {
+          final userData = await AuthService().signin(
+            username: _emailController.text,
+            password: _passwordController.text,
+          );
+
+          // ปิด loading dialog
+          if (context.mounted) Navigator.pop(context);
+
+          if (userData != null) {
+            print('Login successful, navigating to home...');
+            if (context.mounted) {
+              Navigator.pushReplacementNamed(context, '/home');
+            }
+          } else {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('อีเมลหรือรหัสผ่านไม่ถูกต้อง'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
+          }
+        } catch (e) {
+          // ปิด loading dialog
+          if (context.mounted) Navigator.pop(context);
+
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('เกิดข้อผิดพลาด: $e'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
         }
       },
-
       child: const Text(
         "Sign In",
         style: TextStyle(
-          color: Colors.white, // เปลี่ยนเป็นสีที่ต้องการ เช่น Colors.blue
+          color: Colors.white,
           fontWeight: FontWeight.bold,
           fontSize: 18,
         ),
