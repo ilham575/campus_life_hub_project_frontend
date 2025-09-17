@@ -8,6 +8,8 @@ import 'package:campus_life_hub/pages/timetable/timetable.dart';
 import 'package:provider/provider.dart';
 import 'package:campus_life_hub/pages/timetable/timetable_state.dart';
 import 'package:campus_life_hub/pages/campus_map.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
 
 class Home extends StatefulWidget {
   const Home({super.key});
