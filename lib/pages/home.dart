@@ -138,7 +138,7 @@ class _HomeState extends State<Home> {
           ),
         ),
       ),
-      TimetablePage(),
+      TimetablePage(userId: FirebaseAuth.instance.currentUser?.uid ?? ""),
       CampusMapPage(), // เพิ่มหน้าแผนที่มหาวิทยาลัย
       ProfilePage(),
     ];

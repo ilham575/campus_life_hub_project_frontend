@@ -1,13 +1,13 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:http/http.dart' as http;
 
 class TimetableState with ChangeNotifier {
   bool isGrid = false;
   late String selectedWeekday;
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
-  String? get _userId => FirebaseAuth.instance.currentUser?.uid;
+
+  // ✅ ใช้ 10.0.2.2 สำหรับ Android Emulator (แทน localhost)
+  final String apiUrl = "http://10.0.2.2:8000/timetable";
 
   final List<String> days = ['จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์'];
   final List<String> times = [
@@ -20,54 +20,123 @@ class TimetableState with ChangeNotifier {
     '15:00-16:00',
   ];
 
-  final Map<String, String> _subjects = {};
+  final Map<String, String> _subjects = {}; // key = "day|time" → subject
+  final Map<String, int> _ids = {};         // key = "day|time" → id
 
   Map<String, String> get subjects => _subjects;
 
   TimetableState() {
     selectedWeekday = _getTodayThaiName();
-    // ฟังการเปลี่ยนแปลงสถานะการล็อกอินของผู้ใช้
-    FirebaseAuth.instance.authStateChanges().listen((user) {
-      _subjects.clear(); // ล้างข้อมูลเก่าทันที
-      if (user != null) {
-        _loadFromFirestore(); // โหลดข้อมูลของผู้ใช้ใหม่
-      }
-      notifyListeners(); // แจ้งให้ UI อัปเดต
-    });
   }
 
   String _getTodayThaiName() {
     final now = DateTime.now();
-    final formatter = DateFormat('EEEE', 'th');
-    final weekday = formatter.format(now);
-    if (weekday.contains('จันทร์')) return 'จันทร์';
-    if (weekday.contains('อังคาร')) return 'อังคาร';
-    if (weekday.contains('พุธ')) return 'พุธ';
-    if (weekday.contains('พฤหัส')) return 'พฤหัสบดี';
-    if (weekday.contains('ศุกร์')) return 'ศุกร์';
-    return 'จันทร์';
-  }
-
-   Future<void> _loadFromFirestore() async {
-    if (_userId == null) return;
-    
-    final doc = await _db.collection('timetable').doc(_userId).get();
-    if (doc.exists) {
-      final data = doc.data()!;
-      _subjects.clear();
-      data.forEach((key, value) {
-        _subjects[key] = value.toString();
-      });
-      notifyListeners();
+    switch (now.weekday) {
+      case DateTime.monday:
+        return 'จันทร์';
+      case DateTime.tuesday:
+        return 'อังคาร';
+      case DateTime.wednesday:
+        return 'พุธ';
+      case DateTime.thursday:
+        return 'พฤหัสบดี';
+      case DateTime.friday:
+        return 'ศุกร์';
+      default:
+        return 'จันทร์';
     }
-    
   }
-  
-  Future<void> _saveToFirestore() async {
-    if (_userId == null) return;
 
-    await _db.collection('timetable').doc(_userId).set(_subjects);
-    
+  /// โหลดข้อมูลจาก API
+  Future<void> loadFromApi(String userId) async {
+    try {
+      final res = await http.get(Uri.parse("$apiUrl/$userId"));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        _subjects.clear();
+        _ids.clear();
+        for (var item in data) {
+          final key = "${item['day']}|${item['time']}";
+          _subjects[key] = item['subject'];
+          _ids[key] = item['id'];
+        }
+        notifyListeners();
+      } else {
+        debugPrint("โหลดตารางล้มเหลว: ${res.statusCode} ${res.body}");
+      }
+    } catch (e) {
+      debugPrint("error loadFromApi: $e");
+    }
+  }
+
+  /// เพิ่มหรือแก้ไขวิชา
+  Future<void> updateSubject(
+      String userId, String day, String time, String subject) async {
+    final key = '$day|$time';
+    final id = _ids[key]; // mapping day|time → id
+
+    if (id != null) {
+      // ✅ PUT แก้ไข
+      final res = await http.put(
+        Uri.parse("$apiUrl/$id"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "user_id": userId,
+          "day": day,
+          "time": time,
+          "subject": subject,
+        }),
+      );
+
+      if (res.statusCode == 200) {
+        _subjects[key] = subject;
+        notifyListeners();
+      } else {
+        debugPrint("แก้ไขวิชาล้มเหลว: ${res.statusCode} ${res.body}");
+      }
+    } else {
+      // ✅ POST เพิ่มใหม่
+      final res = await http.post(
+        Uri.parse(apiUrl),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "user_id": userId,
+          "day": day,
+          "time": time,
+          "subject": subject,
+        }),
+      );
+
+      if (res.statusCode == 200 || res.statusCode == 201) { // 👈 รองรับทั้ง 200 และ 201
+        final data = jsonDecode(res.body);
+        _subjects[key] = subject;
+        _ids[key] = data["id"]; // ✅ เก็บ id ไว้ใช้ตอน update/delete
+        notifyListeners();
+      } else {
+        debugPrint("เพิ่มวิชาล้มเหลว: ${res.statusCode} ${res.body}");
+      }
+    }
+  }
+
+  /// ลบวิชา
+  Future<void> removeSubject(int id, String day, String time) async {
+    try {
+      final res = await http.delete(Uri.parse("$apiUrl/$id"));
+      if (res.statusCode == 200) {
+        final key = "$day|$time";
+        _subjects.remove(key);
+        _ids.remove(key);
+        notifyListeners();
+      } else {
+        debugPrint("ลบวิชาล้มเหลว: ${res.statusCode} ${res.body}");
+      }
+    } catch (e) {
+      debugPrint("error removeSubject: $e");
+    }
+  }
+
+  int? getIdFor(String day, String time) {
+    return _ids["$day|$time"];
   }
 
   void toggleView() {
@@ -81,21 +150,8 @@ class TimetableState with ChangeNotifier {
     notifyListeners();
   }
 
-  void updateSubject(String day, String time, String subject) {
-    _subjects['$day|$time'] = subject;
-    notifyListeners();
-    _saveToFirestore();
-  }
-
-  void removeSubject(String day, String time) {
-    _subjects.remove('$day|$time');
-    notifyListeners();
-    _saveToFirestore();
-  }
-
   void resetToToday() {
     selectedWeekday = _getTodayThaiName();
     notifyListeners();
   }
-
 }

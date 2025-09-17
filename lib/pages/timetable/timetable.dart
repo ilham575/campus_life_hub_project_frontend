@@ -3,7 +3,28 @@ import 'package:provider/provider.dart';
 import 'timetable_state.dart';
 import 'subject_dialog.dart';
 
-class TimetablePage extends StatelessWidget {
+class TimetablePage extends StatefulWidget {
+  final String userId;
+
+  const TimetablePage({super.key, required this.userId});
+
+  @override
+  State<TimetablePage> createState() => _TimetablePageState();
+}
+
+class _TimetablePageState extends State<TimetablePage> {
+  bool _isLoaded = false; // ✅ ใช้กันโหลดซ้ำ
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_isLoaded) {
+      Provider.of<TimetableState>(context, listen: false)
+          .loadFromApi(widget.userId); // โหลด API แค่ครั้งเดียว
+      _isLoaded = true;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final timetable = Provider.of<TimetableState>(context);
@@ -33,7 +54,6 @@ class TimetablePage extends StatelessWidget {
                 String? selectedDay;
                 String? selectedTime;
                 final controller = TextEditingController();
-                final timetable = Provider.of<TimetableState>(context, listen: false);
 
                 void updateController() {
                   if (selectedDay != null && selectedTime != null) {
@@ -71,6 +91,7 @@ class TimetablePage extends StatelessWidget {
                             selectedTime != null &&
                             controller.text.trim().isNotEmpty) {
                           timetable.updateSubject(
+                            widget.userId,
                             selectedDay!,
                             selectedTime!,
                             controller.text.trim(),
@@ -79,11 +100,13 @@ class TimetablePage extends StatelessWidget {
                       },
                       onDelete: hasSubject()
                           ? () {
-                              timetable.removeSubject(
-                                  selectedDay!, selectedTime!);
+                              final id = timetable.getIdFor(selectedDay!, selectedTime!);
+                              if (id != null) {
+                                timetable.removeSubject(id, selectedDay!, selectedTime!);
+                              }
                             }
                           : null,
-                      showDropdowns: true, // เพิ่มตรงนี้ (default ก็ได้)
+                      showDropdowns: true,
                     ),
                   ),
                 );
@@ -116,32 +139,40 @@ class TimetablePage extends StatelessWidget {
               children: [
                 TableCell(child: Center(child: Text(day))),
                 ...timetable.times.map((time) {
-                  final subject = timetable.subjects['$day|$time'] ?? '';
+                  final key = '$day|$time';
+                  final subject = timetable.subjects[key] ?? '';
                   return TableCell(
                     child: InkWell(
                       onTap: () {
                         final controller = TextEditingController(text: subject);
-                        String selectedDay = day;
-                        String selectedTime = time;
 
                         showDialog(
                           context: context,
                           builder: (_) => SubjectDialog(
-                            selectedDay: selectedDay,
-                            selectedTime: selectedTime,
+                            selectedDay: day,
+                            selectedTime: time,
                             controller: controller,
-                            onDayChanged: (_) {}, // ไม่ต้องแก้วันใน Grid mode
+                            onDayChanged: (_) {},
                             onTimeChanged: (_) {},
                             onSave: () {
                               if (controller.text.trim().isNotEmpty) {
                                 timetable.updateSubject(
-                                    selectedDay, selectedTime, controller.text.trim());
+                                  widget.userId,
+                                  day,
+                                  time,
+                                  controller.text.trim(),
+                                );
                               }
                             },
                             onDelete: subject.isNotEmpty
-                                ? () => timetable.removeSubject(selectedDay, selectedTime)
+                                ? () {
+                                    final id = timetable.getIdFor(day, time);
+                                    if (id != null) {
+                                      timetable.removeSubject(id, day, time);
+                                    }
+                                  }
                                 : null,
-                            showDropdowns: false, // ซ่อน dropdown
+                            showDropdowns: false,
                           ),
                         );
                       },
@@ -220,15 +251,25 @@ class TimetablePage extends StatelessWidget {
                               selectedDay: day,
                               selectedTime: time,
                               controller: controller,
-                              onDayChanged: (_) {}, // ไม่ให้เปลี่ยนวันใน list mode
+                              onDayChanged: (_) {},
                               onTimeChanged: (_) {},
                               onSave: () {
                                 if (controller.text.trim().isNotEmpty) {
-                                  timetable.updateSubject(day, time, controller.text.trim());
+                                  timetable.updateSubject(
+                                    widget.userId,
+                                    day,
+                                    time,
+                                    controller.text.trim(),
+                                  );
                                 }
                               },
-                              onDelete: () => timetable.removeSubject(day, time),
-                              showDropdowns: false, // ซ่อน dropdown
+                              onDelete: () {
+                                final id = timetable.getIdFor(day, time);
+                                if (id != null) {
+                                  timetable.removeSubject(id, day, time);
+                                }
+                              },
+                              showDropdowns: false,
                             ),
                           );
                         },
