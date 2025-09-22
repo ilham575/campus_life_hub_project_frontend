@@ -3,7 +3,6 @@ import 'package:campus_life_hub/services/auth_service.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Signup extends StatelessWidget {
   Signup({super.key});
