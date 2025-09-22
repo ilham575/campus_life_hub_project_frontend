@@ -1,28 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../services/auth_service.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
 
-  static final ValueNotifier<Key> _fbKey = ValueNotifier(Key('profile'));
+  static final ValueNotifier<Key> _refreshKey = ValueNotifier(Key('profile'));
 
   Future<Map<String, dynamic>?> _fetchProfile() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      final doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
-      return doc.data();
-    }
-    return null;
+    print('Fetching current user profile...');
+    final userData = await AuthService().getCurrentUser();
+    print('Profile data: $userData');
+    return userData;
   }
 
   @override
   Widget build(BuildContext context) {
-    final userEmail = FirebaseAuth.instance.currentUser?.email ?? '';
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -38,7 +31,7 @@ class ProfilePage extends StatelessWidget {
         ),
         child: SafeArea(
           child: ValueListenableBuilder<Key>(
-            valueListenable: _fbKey,
+            valueListenable: _refreshKey,
             builder: (context, key, _) {
               return FutureBuilder<Map<String, dynamic>?>(
                 key: key,
@@ -66,6 +59,7 @@ class ProfilePage extends StatelessWidget {
                       ),
                     );
                   }
+                  
                   if (!snapshot.hasData || snapshot.data == null) {
                     return Center(
                       child: Column(
@@ -86,10 +80,18 @@ class ProfilePage extends StatelessWidget {
                               ),
                             ),
                           ),
+                          const SizedBox(height: 16),
+                          ElevatedButton(
+                            onPressed: () async {
+                              await AuthService().signout(context);
+                            },
+                            child: const Text('กลับไปหน้า Login'),
+                          ),
                         ],
                       ),
                     );
                   }
+                  
                   final data = snapshot.data!;
                   return SingleChildScrollView(
                     child: Column(
@@ -124,6 +126,18 @@ class ProfilePage extends StatelessWidget {
                                   ),
                                 ),
                               ),
+                              const Spacer(),
+                              // Logout button
+                              IconButton(
+                                onPressed: () async {
+                                  await AuthService().signout(context);
+                                },
+                                icon: const Icon(
+                                  Icons.logout,
+                                  color: Colors.red,
+                                  size: 24,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -133,7 +147,7 @@ class ProfilePage extends StatelessWidget {
                           studentId: data['student_id'] ?? '',
                           faculty: data['faculty'] ?? '',
                           year: data['year']?.toString() ?? '',
-                          email: userEmail,
+                          email: data['username'] ?? '',
                           onEdit: () async {
                             final result = await showModalBottomSheet<bool>(
                               context: context,
@@ -144,31 +158,34 @@ class ProfilePage extends StatelessWidget {
                                 final idController = TextEditingController(text: data['student_id'] ?? '');
                                 final facultyController = TextEditingController(text: data['faculty'] ?? '');
                                 final yearController = TextEditingController(text: data['year']?.toString() ?? '');
+                                
                                 return EditProfileForm(
                                   nameController: nameController,
                                   idController: idController,
                                   facultyController: facultyController,
                                   yearController: yearController,
                                   onSave: () async {
-                                    final user = FirebaseAuth.instance.currentUser;
-                                    if (user != null) {
-                                      await FirebaseFirestore.instance
-                                          .collection('users')
-                                          .doc(user.uid)
-                                          .update({
-                                            'name': nameController.text,
-                                            'student_id': idController.text,
-                                            'faculty': facultyController.text,
-                                            'year': int.tryParse(yearController.text) ?? yearController.text,
-                                          });
+                                    bool success = await AuthService().updateProfile(
+                                      name: nameController.text.isNotEmpty ? nameController.text : null,
+                                      studentId: idController.text.isNotEmpty ? idController.text : null,
+                                      faculty: facultyController.text.isNotEmpty ? facultyController.text : null,
+                                      year: yearController.text.isNotEmpty ? int.tryParse(yearController.text) : null,
+                                    );
+                                    
+                                    if (success) {
+                                      Navigator.pop(context, true);
+                                    } else {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(content: Text('ไม่สามารถอัพเดตได้')),
+                                      );
                                     }
-                                    Navigator.pop(context, true);
                                   },
                                 );
                               },
                             );
+                            
                             if (result == true) {
-                              _fbKey.value = UniqueKey();
+                              _refreshKey.value = UniqueKey();
                             }
                           },
                         ),
