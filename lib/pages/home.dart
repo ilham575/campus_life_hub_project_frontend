@@ -230,9 +230,7 @@ class _HomeState extends State<Home> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    _currentUserName != null && _currentUserName!.isNotEmpty
-                        ? 'สวัสดี ${_currentUserName}! 👋'
-                        : 'สวัสดี! 👋',
+                    'สวัสดี! 👋',
                     style: GoogleFonts.kanit(
                       textStyle: const TextStyle(
                         color: Colors.white,
@@ -243,7 +241,7 @@ class _HomeState extends State<Home> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    _currentUserEmail ?? 'ไม่ระบุอีเมล',
+                    _currentUserName ?? 'ไม่ระบุชื่อ',
                     style: GoogleFonts.kanit(
                       textStyle: TextStyle(
                         color: Colors.white.withOpacity(0.9),
