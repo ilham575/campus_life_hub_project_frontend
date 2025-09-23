@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:geolocator/geolocator.dart';
 
@@ -28,10 +27,31 @@ class _CampusMapPageState extends State<CampusMapPage> {
   ];
 
   LatLng? myLocation;
-  final mapController = MapController();
+  GoogleMapController? mapController;
+  Set<Marker> markers = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _createMarkers();
+  }
+
+  void _createMarkers() {
+    markers = places.map((place) {
+      return Marker(
+        markerId: MarkerId(place['name']),
+        position: place['latlng'],
+        infoWindow: InfoWindow(
+          title: place['name'],
+          snippet: place['desc'],
+        ),
+        onTap: () => _navigateTo(place['latlng']),
+      );
+    }).toSet();
+  }
 
   void _navigateTo(LatLng latlng) async {
-    final url = 'https://www.openstreetmap.org/?mlat=${latlng.latitude}&mlon=${latlng.longitude}#map=18/${latlng.latitude}/${latlng.longitude}';
+    final url = 'https://www.google.com/maps/search/?api=1&query=${latlng.latitude},${latlng.longitude}';
     if (await canLaunchUrl(Uri.parse(url))) {
       await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
     }
@@ -50,11 +70,29 @@ class _CampusMapPageState extends State<CampusMapPage> {
     }
     if (permission == LocationPermission.deniedForever) return;
 
-    final position = await Geolocator.getCurrentPosition();
+    final position = await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.high,
+    );
+    final newLocation = LatLng(position.latitude, position.longitude);
+    
     setState(() {
-      myLocation = LatLng(position.latitude, position.longitude);
+      myLocation = newLocation;
+      // Remove existing user location marker if exists
+      markers.removeWhere((marker) => marker.markerId.value == 'my_location');
+      // Add new user location marker
+      markers.add(
+        Marker(
+          markerId: const MarkerId('my_location'),
+          position: newLocation,
+          infoWindow: const InfoWindow(title: 'ตำแหน่งของฉัน'),
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+        ),
+      );
     });
-    mapController.move(myLocation!, 18);
+    
+    mapController?.animateCamera(
+      CameraUpdate.newLatLngZoom(newLocation, 18),
+    );
   }
 
   @override
@@ -71,38 +109,17 @@ class _CampusMapPageState extends State<CampusMapPage> {
           ),
         ],
       ),
-      body: FlutterMap(
-        mapController: mapController,
-        options: MapOptions(
-          center: campusCenter,
+      body: GoogleMap(
+        onMapCreated: (GoogleMapController controller) {
+          mapController = controller;
+        },
+        initialCameraPosition: CameraPosition(
+          target: campusCenter,
           zoom: 17,
         ),
-        children: [
-          TileLayer(
-            urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-            subdomains: const ['a', 'b', 'c'],
-          ),
-          MarkerLayer(
-            markers: [
-              ...places.map((place) => Marker(
-                point: place['latlng'],
-                width: 40,
-                height: 40,
-                child: GestureDetector(
-                  onTap: () => _navigateTo(place['latlng']),
-                  child: const Icon(Icons.location_on, color: Colors.deepPurple, size: 36),
-                ),
-              )),
-              if (myLocation != null)
-                Marker(
-                  point: myLocation!,
-                  width: 40,
-                  height: 40,
-                  child: const Icon(Icons.person_pin_circle, color: Colors.blue, size: 40),
-                ),
-            ],
-          ),
-        ],
+        markers: markers,
+        myLocationEnabled: false,
+        myLocationButtonEnabled: false,
       ),
     );
   }
