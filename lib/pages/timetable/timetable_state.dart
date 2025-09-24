@@ -44,7 +44,16 @@ class TimetableState with ChangeNotifier {
   // ✅ base url ไม่ใส่ / ปิดท้าย
   final String apiUrl = "http://10.0.2.2:8000/subjects";
 
-  final List<String> days = ['จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์'];
+  final List<String> days = [
+    'จันทร์',
+    'อังคาร',
+    'พุธ',
+    'พฤหัสบดี',
+    'ศุกร์',
+    'เสาร์',
+    'อาทิตย์'
+  ];
+
 
   List<Subject> _subjects = [];
   List<Subject> get subjects => _subjects;
@@ -66,10 +75,15 @@ class TimetableState with ChangeNotifier {
         return 'พฤหัสบดี';
       case DateTime.friday:
         return 'ศุกร์';
+      case DateTime.saturday:
+        return 'เสาร์';
+      case DateTime.sunday:
+        return 'อาทิตย์';
       default:
         return 'จันทร์';
     }
   }
+
 
   Future<Map<String, String>> _getHeaders() async {
     final prefs = await SharedPreferences.getInstance();
