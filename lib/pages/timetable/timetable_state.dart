@@ -1,13 +1,13 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class TimetableState with ChangeNotifier {
   bool isGrid = false;
   late String selectedWeekday;
 
-  // ✅ ใช้ 10.0.2.2 สำหรับ Android Emulator (แทน localhost)
-  final String apiUrl = "http://10.0.2.2:8000/timetable";
+  final String apiUrl = "http://10.0.2.2:8000/timetable/";
 
   final List<String> days = ['จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์'];
   final List<String> times = [
@@ -20,8 +20,8 @@ class TimetableState with ChangeNotifier {
     '15:00-16:00',
   ];
 
-  final Map<String, String> _subjects = {}; // key = "day|time" → subject
-  final Map<String, int> _ids = {};         // key = "day|time" → id
+  final Map<String, String> _subjects = {};
+  final Map<String, int> _ids = {};
 
   Map<String, String> get subjects => _subjects;
 
@@ -47,10 +47,21 @@ class TimetableState with ChangeNotifier {
     }
   }
 
-  /// โหลดข้อมูลจาก API
-  Future<void> loadFromApi(String userId) async {
+  Future<Map<String, String>> _getHeaders() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString("token");
+    final headers = {"Content-Type": "application/json"};
+    if (token != null) {
+      headers["Authorization"] = "Bearer $token";
+    }
+    return headers;
+  }
+
+  /// โหลดข้อมูลจาก API (แนบ token)
+  Future<void> loadFromApi() async {
     try {
-      final res = await http.get(Uri.parse("$apiUrl/$userId"));
+      final headers = await _getHeaders();
+      final res = await http.get(Uri.parse(apiUrl), headers: headers);
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
         _subjects.clear();
@@ -69,19 +80,17 @@ class TimetableState with ChangeNotifier {
     }
   }
 
-  /// เพิ่มหรือแก้ไขวิชา
-  Future<void> updateSubject(
-      String userId, String day, String time, String subject) async {
+  /// เพิ่มหรือแก้ไขวิชา (แนบ token)
+  Future<void> updateSubject(String day, String time, String subject) async {
     final key = '$day|$time';
-    final id = _ids[key]; // mapping day|time → id
+    final id = _ids[key];
+    final headers = await _getHeaders();
 
     if (id != null) {
-      // ✅ PUT แก้ไข
       final res = await http.put(
-        Uri.parse("$apiUrl/$id"),
-        headers: {"Content-Type": "application/json"},
+        Uri.parse("$apiUrl$id"),
+        headers: headers,
         body: jsonEncode({
-          "user_id": userId,
           "day": day,
           "time": time,
           "subject": subject,
@@ -95,22 +104,20 @@ class TimetableState with ChangeNotifier {
         debugPrint("แก้ไขวิชาล้มเหลว: ${res.statusCode} ${res.body}");
       }
     } else {
-      // ✅ POST เพิ่มใหม่
       final res = await http.post(
         Uri.parse(apiUrl),
-        headers: {"Content-Type": "application/json"},
+        headers: headers,
         body: jsonEncode({
-          "user_id": userId,
           "day": day,
           "time": time,
           "subject": subject,
         }),
       );
 
-      if (res.statusCode == 200 || res.statusCode == 201) { // 👈 รองรับทั้ง 200 และ 201
+      if (res.statusCode == 200 || res.statusCode == 201) {
         final data = jsonDecode(res.body);
         _subjects[key] = subject;
-        _ids[key] = data["id"]; // ✅ เก็บ id ไว้ใช้ตอน update/delete
+        _ids[key] = data["id"];
         notifyListeners();
       } else {
         debugPrint("เพิ่มวิชาล้มเหลว: ${res.statusCode} ${res.body}");
@@ -118,23 +125,26 @@ class TimetableState with ChangeNotifier {
     }
   }
 
-  /// ลบวิชา
+  /// ลบวิชา (แนบ token)
   Future<void> removeSubject(int id, String day, String time) async {
-    try {
-      final res = await http.delete(Uri.parse("$apiUrl/$id"));
-      if (res.statusCode == 200) {
-        final key = "$day|$time";
-        _subjects.remove(key);
-        _ids.remove(key);
-        notifyListeners();
-      } else {
-        debugPrint("ลบวิชาล้มเหลว: ${res.statusCode} ${res.body}");
-      }
-    } catch (e) {
-      debugPrint("error removeSubject: $e");
+  try {
+    final headers = await _getHeaders();
+    final res = await http.delete(
+      Uri.parse("$apiUrl$id"), // <-- ไม่มี / ซ้ำ
+      headers: headers,
+    );
+    if (res.statusCode == 200) {
+      final key = "$day|$time";
+      _subjects.remove(key);
+      _ids.remove(key);
+      notifyListeners();
+    } else {
+      debugPrint("ลบวิชาล้มเหลว: ${res.statusCode} ${res.body}");
     }
+  } catch (e) {
+    debugPrint("error removeSubject: $e");
   }
-
+}
   int? getIdFor(String day, String time) {
     return _ids["$day|$time"];
   }

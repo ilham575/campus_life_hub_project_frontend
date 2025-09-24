@@ -4,9 +4,7 @@ import 'timetable_state.dart';
 import 'subject_dialog.dart';
 
 class TimetablePage extends StatefulWidget {
-  final String userId;
-
-  const TimetablePage({super.key, required this.userId});
+  const TimetablePage({super.key});
 
   @override
   State<TimetablePage> createState() => _TimetablePageState();
@@ -40,7 +38,7 @@ class _TimetablePageState extends State<TimetablePage> with TickerProviderStateM
     super.didChangeDependencies();
     if (!_isLoaded) {
       Provider.of<TimetableState>(context, listen: false)
-          .loadFromApi(widget.userId);
+          .loadFromApi(); // ไม่ต้องส่ง userId
       _isLoaded = true;
       _animationController.forward();
     }
@@ -203,7 +201,6 @@ class _TimetablePageState extends State<TimetablePage> with TickerProviderStateM
                 selectedTime != null &&
                 controller.text.trim().isNotEmpty) {
               timetable.updateSubject(
-                widget.userId,
                 selectedDay!,
                 selectedTime!,
                 controller.text.trim(),
@@ -220,6 +217,39 @@ class _TimetablePageState extends State<TimetablePage> with TickerProviderStateM
               : null,
           showDropdowns: true,
         ),
+      ),
+    );
+  }
+
+  void _showEditDialog(BuildContext context, TimetableState timetable, String day, String time, String subject) {
+    final controller = TextEditingController(text: subject);
+
+    showDialog(
+      context: context,
+      builder: (_) => SubjectDialog(
+        selectedDay: day,
+        selectedTime: time,
+        controller: controller,
+        onDayChanged: (_) {},
+        onTimeChanged: (_) {},
+        onSave: () {
+          if (controller.text.trim().isNotEmpty) {
+            timetable.updateSubject(
+              day,
+              time,
+              controller.text.trim(),
+            );
+          }
+        },
+        onDelete: subject.isNotEmpty
+            ? () {
+                final id = timetable.getIdFor(day, time);
+                if (id != null) {
+                  timetable.removeSubject(id, day, time);
+                }
+              }
+            : null,
+        showDropdowns: false,
       ),
     );
   }
@@ -348,40 +378,6 @@ class _TimetablePageState extends State<TimetablePage> with TickerProviderStateM
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  void _showEditDialog(BuildContext context, TimetableState timetable, String day, String time, String subject) {
-    final controller = TextEditingController(text: subject);
-
-    showDialog(
-      context: context,
-      builder: (_) => SubjectDialog(
-        selectedDay: day,
-        selectedTime: time,
-        controller: controller,
-        onDayChanged: (_) {},
-        onTimeChanged: (_) {},
-        onSave: () {
-          if (controller.text.trim().isNotEmpty) {
-            timetable.updateSubject(
-              widget.userId,
-              day,
-              time,
-              controller.text.trim(),
-            );
-          }
-        },
-        onDelete: subject.isNotEmpty
-            ? () {
-                final id = timetable.getIdFor(day, time);
-                if (id != null) {
-                  timetable.removeSubject(id, day, time);
-                }
-              }
-            : null,
-        showDropdowns: false,
       ),
     );
   }
