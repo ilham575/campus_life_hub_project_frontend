@@ -20,6 +20,7 @@ class Home extends StatefulWidget {
 
 class _HomeState extends State<Home> {
   int _selectedIndex = 0;
+  int _currentUserId = 0;
   String? _currentUserEmail;
   String? _currentUserName;
   bool _isLoading = true;
@@ -35,6 +36,7 @@ class _HomeState extends State<Home> {
       final userData = await AuthService().getCurrentUser();
       if (userData != null) {
         setState(() {
+          _currentUserId = userData['id'] ?? 0;
           _currentUserEmail = userData['username'] ?? '';
           _currentUserName = userData['name'] ?? '';
           _isLoading = false;
@@ -333,7 +335,7 @@ class _HomeState extends State<Home> {
           ),
         ),
       ),
-      const TimetablePage(),
+      TimetablePage(userId: _currentUserId.toString()),
       CampusMapPage(), // เพิ่มหน้าแผนที่มหาวิทยาลัย
       ProfilePage(),
     ];
