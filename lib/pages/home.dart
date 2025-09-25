@@ -23,6 +23,7 @@ class _HomeState extends State<Home> {
   String? _currentUserEmail;
   String? _currentUserName;
   bool _isLoading = true;
+  List<String> _roles = [];
 
   @override
   void initState() {
@@ -37,6 +38,7 @@ class _HomeState extends State<Home> {
         setState(() {
           _currentUserEmail = userData['username'] ?? '';
           _currentUserName = userData['name'] ?? '';
+          _roles = List<String>.from(userData['roles'] ?? []);
           _isLoading = false;
         });
       } else {
@@ -254,6 +256,22 @@ class _HomeState extends State<Home> {
               ),
             ),
             _logout(context),
+
+            if (_roles.contains('admin'))
+              Padding(
+                padding: const EdgeInsets.only(left: 12),
+                child: ElevatedButton.icon(
+                  icon: const Icon(Icons.admin_panel_settings),
+                  label: const Text('Admin'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.deepPurple,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: () {
+                    Navigator.pushNamed(context, '/admin');
+                  },
+                ),
+              ),
           ],
         ),
       ),

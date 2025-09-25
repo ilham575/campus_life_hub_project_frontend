@@ -8,6 +8,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:campus_life_hub/pages/home.dart';
 import 'package:campus_life_hub/pages/timetable/timetable_state.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'pages/admin_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -39,6 +40,7 @@ class MyApp extends StatelessWidget {
       home: seenOnboarding ? Login() : OnboardingScreen(),
       routes: {
         '/home': (context) => const Home(),
+        '/admin': (context) => const AdminPage(),
       },
     );
   }
