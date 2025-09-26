@@ -2,8 +2,8 @@ import 'package:campus_life_hub/pages/signup.dart';
 import 'package:campus_life_hub/services/auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+//import 'package:flutter/services.dart';
+//import 'package:shared_preferences/shared_preferences.dart';
 
 class Login extends StatelessWidget {
   Login({super.key});
@@ -80,7 +80,7 @@ class Login extends StatelessWidget {
                       child: Column(
                         children: [
                           // Back Button (only if can pop)
-                          if (Navigator.canPop(context))
+                          /* if (Navigator.canPop(context))
                             Align(
                               alignment: Alignment.centerLeft,
                               child: GestureDetector(
@@ -98,7 +98,7 @@ class Login extends StatelessWidget {
                                   ),
                                 ),
                               ),
-                            ),
+                            ), */
                           
                           const SizedBox(height: 40),
                           
