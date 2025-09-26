@@ -1,9 +1,7 @@
-import 'package:campus_life_hub/pages/signup.dart';
 import 'package:campus_life_hub/services/auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'user_type_select.dart'; // ใช้หน้าเลือกประเภท
 
 class Login extends StatelessWidget {
   Login({super.key});
@@ -410,18 +408,7 @@ class Login extends StatelessWidget {
         onPressed: () {
           Navigator.push(
             context,
-            PageRouteBuilder(
-              pageBuilder: (context, animation, secondaryAnimation) => Signup(),
-              transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                return SlideTransition(
-                  position: animation.drive(
-                    Tween(begin: const Offset(1.0, 0.0), end: Offset.zero)
-                      .chain(CurveTween(curve: Curves.easeInOut)),
-                  ),
-                  child: child,
-                );
-              },
-            ),
+            MaterialPageRoute(builder: (context) => const UserTypeSelectPage()),
           );
         },
         child: Text(

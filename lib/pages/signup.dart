@@ -15,6 +15,7 @@ class Signup extends StatelessWidget {
   final TextEditingController _yearController = TextEditingController();
 
   final ValueNotifier<bool> _obscurePassword = ValueNotifier<bool>(true);
+  final ValueNotifier<String> _role = ValueNotifier<String>('user'); // เพิ่มตัวแปร role
 
   @override
   Widget build(BuildContext context) {
@@ -104,6 +105,8 @@ class Signup extends StatelessWidget {
                       _buildInputField(_emailController, 'อีเมล', Icons.email_outlined, keyboardType: TextInputType.emailAddress),
                       const SizedBox(height: 20),
                       _buildPasswordField(),
+                      const SizedBox(height: 20),
+                      _buildRoleDropdown(), // <<== เพิ่มตรงนี้
                       const SizedBox(height: 32),
                       _buildModernSignupButton(context),
                     ],
@@ -185,6 +188,37 @@ class Signup extends StatelessWidget {
     );
   }
 
+  Widget _buildRoleDropdown() {
+    return ValueListenableBuilder<String>(
+      valueListenable: _role,
+      builder: (context, value, _) {
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8F9FA),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.grey.withOpacity(0.1)),
+          ),
+          child: DropdownButton<String>(
+            value: value,
+            isExpanded: true,
+            underline: const SizedBox(),
+            icon: const Icon(Icons.arrow_drop_down),
+            items: const [
+              DropdownMenuItem(value: 'user', child: Text('ผู้ใช้ทั่วไป')),
+              DropdownMenuItem(value: 'student', child: Text('นักศึกษา')),
+              DropdownMenuItem(value: 'teacher', child: Text('อาจารย์')),
+              DropdownMenuItem(value: 'admin', child: Text('ผู้ดูแลระบบ')),
+            ],
+            onChanged: (val) {
+              if (val != null) _role.value = val;
+            },
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildModernSignupButton(BuildContext context) {
     return Container(
       width: double.infinity,
@@ -239,6 +273,7 @@ class Signup extends StatelessWidget {
               studentId: _studentIdController.text.isNotEmpty ? _studentIdController.text : null,
               faculty: _facultyController.text.isNotEmpty ? _facultyController.text : null,
               year: _yearController.text.isNotEmpty ? int.tryParse(_yearController.text) : null,
+              role: _role.value, // <<== ส่ง role ไป backend
             );
 
             // ปิด loading dialog

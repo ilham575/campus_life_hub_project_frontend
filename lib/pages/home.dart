@@ -255,23 +255,8 @@ class _HomeState extends State<Home> {
                 ],
               ),
             ),
+            const Spacer(), // ดันปุ่มไปขวาสุด
             _logout(context),
-
-            if (_roles.contains('admin'))
-              Padding(
-                padding: const EdgeInsets.only(left: 12),
-                child: ElevatedButton.icon(
-                  icon: const Icon(Icons.admin_panel_settings),
-                  label: const Text('Admin'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.deepPurple,
-                    foregroundColor: Colors.white,
-                  ),
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/admin');
-                  },
-                ),
-              ),
           ],
         ),
       ),
@@ -358,7 +343,63 @@ class _HomeState extends State<Home> {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      body: _pages[_selectedIndex],
+      body: Stack(
+        children: [
+          _pages[_selectedIndex],
+          // Chat head สำหรับ admin เฉพาะคนที่มี role เป็น admin
+          if (_roles.contains('admin'))
+            Positioned(
+              bottom: 32,
+              right: 24,
+              child: GestureDetector(
+                onTap: () {
+                  // เปิดหน้าแชท admin หรือหน้า admin
+                  Navigator.pushNamed(context, '/admin');
+                },
+                child: Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.deepPurple,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.deepPurple.withOpacity(0.3),
+                        blurRadius: 12,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      const Icon(Icons.chat_bubble, color: Colors.white, size: 32),
+                      Positioned(
+                        bottom: 8,
+                        right: 8,
+                        child: Container(
+                          width: 18,
+                          height: 18,
+                          decoration: BoxDecoration(
+                            color: Colors.redAccent,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
+                          ),
+                          child: const Center(
+                            child: Text(
+                              'A', // หรือ badge จำนวนข้อความ
+                              style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
       bottomNavigationBar: MainNavBar(
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,

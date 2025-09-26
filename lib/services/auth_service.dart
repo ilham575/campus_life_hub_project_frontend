@@ -14,16 +14,9 @@ class AuthService {
     String? studentId,
     String? faculty,
     int? year,
+    String? role, // <<== เพิ่มตรงนี้
   }) async {
     final url = Uri.parse("$baseUrl/auth/register");
-
-    // Debug: แสดงข้อมูลที่จะส่ง
-    // print('Sending signup data:');
-    // print('Username: $username');
-    // print('Name: $name');
-    // print('Student ID: $studentId');
-    // print('Faculty: $faculty');
-    // print('Year: $year');
 
     final response = await http.post(
       url,
@@ -35,6 +28,7 @@ class AuthService {
         "student_id": studentId,
         "faculty": faculty,
         "year": year,
+        "roles": role != null ? [role] : ['user'], // <<== ส่งเป็น List
       }),
     );
 
