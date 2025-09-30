@@ -280,18 +280,17 @@ class _SubjectDialogState extends State<SubjectDialog> with SingleTickerProvider
                                               style: const TextStyle(
                                                   fontSize: 15, fontWeight: FontWeight.w600)),
                                           const Spacer(),
-                                          if (schedules.length > 1)
-                                            Material(
-                                              color: Colors.transparent,
-                                              child: InkWell(
-                                                borderRadius: BorderRadius.circular(20),
-                                                onTap: () => removeSchedule(index),
-                                                child: const Padding(
-                                                  padding: EdgeInsets.all(4),
-                                                  child: Icon(Icons.delete, color: Colors.red, size: 22),
-                                                ),
+                                          Material(
+                                            color: Colors.transparent,
+                                            child: InkWell(
+                                              borderRadius: BorderRadius.circular(20),
+                                              onTap: () => removeSchedule(index),
+                                              child: const Padding(
+                                                padding: EdgeInsets.all(4),
+                                                child: Icon(Icons.delete, color: Colors.red, size: 22),
                                               ),
                                             ),
+                                          ),
                                         ],
                                       ),
                                       const SizedBox(height: 14),
