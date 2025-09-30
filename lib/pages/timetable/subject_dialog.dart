@@ -56,10 +56,16 @@ class _SubjectDialogState extends State<SubjectDialog> with SingleTickerProvider
     });
   }
 
-  void removeSchedule(int index) {
+  void removeSchedule(int index) async {
     setState(() {
       schedules.removeAt(index);
     });
+
+    if (schedules.isEmpty && widget.subject != null) {
+    final timetable = Provider.of<TimetableState>(context, listen: false);
+    await timetable.removeSubject(widget.subject!.id);
+    Navigator.pop(context, true); // ปิด dialog ด้วย
+  }
   }
 
   Future<void> _pickTime(int index, bool isStart) async {
