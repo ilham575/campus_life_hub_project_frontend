@@ -8,6 +8,8 @@ import 'package:campus_life_hub/pages/timetable/timetable.dart';
 import 'package:provider/provider.dart';
 import 'package:campus_life_hub/pages/timetable/timetable_state.dart';
 import 'package:campus_life_hub/pages/campus_map.dart';
+import 'package:campus_life_hub/pages/create_event.dart';
+
 import 'package:firebase_auth/firebase_auth.dart';
 
 
@@ -338,6 +340,7 @@ class _HomeState extends State<Home> {
           ),
         ),
       ),
+      CreateEventPage(),
       TimetablePage(userId: _currentUserId.toString()),
       CampusMapPage(), // เพิ่มหน้าแผนที่มหาวิทยาลัย
       ProfilePage(),

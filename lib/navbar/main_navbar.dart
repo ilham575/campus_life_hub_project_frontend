@@ -1,4 +1,3 @@
-// lib/widgets/main_navbar.dart
 import 'package:flutter/material.dart';
 
 class MainNavBar extends StatelessWidget {
@@ -16,12 +15,13 @@ class MainNavBar extends StatelessWidget {
     return BottomNavigationBar(
       currentIndex: currentIndex,
       onTap: onTap,
-      backgroundColor: Colors.deepPurple.shade50, // เปลี่ยนสีพื้นหลัง
-      selectedItemColor: Colors.deepPurple, // สีไอคอน/label ที่เลือก
-      unselectedItemColor: Colors.grey, // สีไอคอน/label ที่ไม่ได้เลือก
+      backgroundColor: Colors.deepPurple.shade50,
+      selectedItemColor: Colors.deepPurple,
+      unselectedItemColor: Colors.grey,
       type: BottomNavigationBarType.fixed,
       items: const [
         BottomNavigationBarItem(icon: Icon(Icons.home), label: 'หน้าแรก'),
+        BottomNavigationBarItem(icon: Icon(Icons.event), label: 'สร้างกิจกรรม'),
         BottomNavigationBarItem(icon: Icon(Icons.schedule), label: 'ตารางเรียน'),
         BottomNavigationBarItem(icon: Icon(Icons.map), label: 'แผนที่'),
         BottomNavigationBarItem(icon: Icon(Icons.person), label: 'โปรไฟล์'),
