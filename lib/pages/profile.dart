@@ -22,11 +22,7 @@ class ProfilePage extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Colors.blue.shade50,
-              Colors.white,
-              Colors.purple.shade50,
-            ],
+            colors: [Colors.blue.shade50, Colors.white, Colors.purple.shade50],
           ),
         ),
         child: SafeArea(
@@ -43,7 +39,9 @@ class ProfilePage extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           CircularProgressIndicator(
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.purple.shade600),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.purple.shade600,
+                            ),
                           ),
                           const SizedBox(height: 16),
                           Text(
@@ -59,7 +57,7 @@ class ProfilePage extends StatelessWidget {
                       ),
                     );
                   }
-                  
+
                   if (!snapshot.hasData || snapshot.data == null) {
                     return Center(
                       child: Column(
@@ -91,7 +89,7 @@ class ProfilePage extends StatelessWidget {
                       ),
                     );
                   }
-                  
+
                   final data = snapshot.data!;
                   return SingleChildScrollView(
                     child: Column(
@@ -105,7 +103,10 @@ class ProfilePage extends StatelessWidget {
                                 padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
                                   gradient: LinearGradient(
-                                    colors: [Colors.purple.shade600, Colors.blue.shade600],
+                                    colors: [
+                                      Colors.purple.shade600,
+                                      Colors.blue.shade600,
+                                    ],
                                   ),
                                   borderRadius: BorderRadius.circular(16),
                                 ),
@@ -141,49 +142,71 @@ class ProfilePage extends StatelessWidget {
                             ],
                           ),
                         ),
-                        
+
                         UserInfoCard(
                           name: data['name'] ?? '',
                           studentId: data['student_id'] ?? '',
                           faculty: data['faculty'] ?? '',
                           year: data['year']?.toString() ?? '',
                           email: data['username'] ?? '',
+                          role: data['role'] ?? '',
                           onEdit: () async {
                             final result = await showModalBottomSheet<bool>(
                               context: context,
                               isScrollControlled: true,
                               backgroundColor: Colors.transparent,
                               builder: (context) {
-                                final nameController = TextEditingController(text: data['name'] ?? '');
-                                final idController = TextEditingController(text: data['student_id'] ?? '');
-                                final facultyController = TextEditingController(text: data['faculty'] ?? '');
-                                final yearController = TextEditingController(text: data['year']?.toString() ?? '');
-                                
+                                final nameController = TextEditingController(
+                                  text: data['name'] ?? '',
+                                );
+                                final idController = TextEditingController(
+                                  text: data['student_id'] ?? '',
+                                );
+                                final facultyController = TextEditingController(
+                                  text: data['faculty'] ?? '',
+                                );
+                                final yearController = TextEditingController(
+                                  text: data['year']?.toString() ?? '',
+                                );
+
                                 return EditProfileForm(
                                   nameController: nameController,
                                   idController: idController,
                                   facultyController: facultyController,
                                   yearController: yearController,
                                   onSave: () async {
-                                    bool success = await AuthService().updateProfile(
-                                      name: nameController.text.isNotEmpty ? nameController.text : null,
-                                      studentId: idController.text.isNotEmpty ? idController.text : null,
-                                      faculty: facultyController.text.isNotEmpty ? facultyController.text : null,
-                                      year: yearController.text.isNotEmpty ? int.tryParse(yearController.text) : null,
+                                    bool
+                                    success = await AuthService().updateProfile(
+                                      name: nameController.text.isNotEmpty
+                                          ? nameController.text
+                                          : null,
+                                      studentId: idController.text.isNotEmpty
+                                          ? idController.text
+                                          : null,
+                                      faculty: facultyController.text.isNotEmpty
+                                          ? facultyController.text
+                                          : null,
+                                      year: yearController.text.isNotEmpty
+                                          ? int.tryParse(yearController.text)
+                                          : null,
                                     );
-                                    
+
                                     if (success) {
                                       Navigator.pop(context, true);
                                     } else {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(content: Text('ไม่สามารถอัพเดตได้')),
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('ไม่สามารถอัพเดตได้'),
+                                        ),
                                       );
                                     }
                                   },
                                 );
                               },
                             );
-                            
+
                             if (result == true) {
                               _refreshKey.value = UniqueKey();
                             }
@@ -208,6 +231,7 @@ class UserInfoCard extends StatelessWidget {
   final String faculty;
   final String year;
   final String email;
+  final String role;
   final VoidCallback onEdit;
 
   const UserInfoCard({
@@ -217,6 +241,7 @@ class UserInfoCard extends StatelessWidget {
     required this.faculty,
     required this.year,
     required this.email,
+    required this.role,
     required this.onEdit,
   });
 
@@ -248,10 +273,7 @@ class UserInfoCard extends StatelessWidget {
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [
-                    Colors.purple.shade400,
-                    Colors.blue.shade400,
-                  ],
+                  colors: [Colors.purple.shade400, Colors.blue.shade400],
                 ),
                 shape: BoxShape.circle,
                 boxShadow: [
@@ -263,14 +285,10 @@ class UserInfoCard extends StatelessWidget {
                   ),
                 ],
               ),
-              child: const Icon(
-                Icons.person,
-                size: 60,
-                color: Colors.white,
-              ),
+              child: const Icon(Icons.person, size: 60, color: Colors.white),
             ),
             const SizedBox(height: 24),
-            
+
             // Name
             Text(
               name.isNotEmpty ? name : 'ไม่ระบุชื่อ',
@@ -284,14 +302,24 @@ class UserInfoCard extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 20),
-            
+
             // Info Cards
-            _buildInfoCard(
-              icon: Icons.badge_outlined,
-              title: 'รหัสนักศึกษา',
-              value: studentId.isNotEmpty ? studentId : 'ไม่ระบุ',
-              color: Colors.blue,
-            ),
+            if (role == 'student') ...[
+              _buildInfoCard(
+                icon: Icons.badge_outlined,
+                title: 'รหัสนักศึกษา',
+                value: studentId.isNotEmpty ? studentId : 'ไม่ระบุ',
+                color: Colors.blue,
+              ),
+              const SizedBox(height: 12),
+              _buildInfoCard(
+                icon: Icons.grade_outlined,
+                title: 'ชั้นปี',
+                value: year.isNotEmpty ? 'ปีที่ $year' : 'ไม่ระบุ',
+                color: Colors.orange,
+              ),
+            ],
+
             const SizedBox(height: 12),
             _buildInfoCard(
               icon: Icons.school_outlined,
@@ -301,21 +329,14 @@ class UserInfoCard extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             _buildInfoCard(
-              icon: Icons.grade_outlined,
-              title: 'ชั้นปี',
-              value: year.isNotEmpty ? 'ปีที่ $year' : 'ไม่ระบุ',
-              color: Colors.orange,
-            ),
-            const SizedBox(height: 12),
-            _buildInfoCard(
               icon: Icons.email_outlined,
               title: 'อีเมล',
               value: email,
               color: Colors.purple,
             ),
-            
+
             const SizedBox(height: 32),
-            
+
             // Edit Button
             Container(
               width: double.infinity,
@@ -373,10 +394,7 @@ class UserInfoCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: color.withOpacity(0.05),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: color.withOpacity(0.2),
-          width: 1,
-        ),
+        border: Border.all(color: color.withOpacity(0.2), width: 1),
       ),
       child: Row(
         children: [
@@ -386,11 +404,7 @@ class UserInfoCard extends StatelessWidget {
               color: color.withOpacity(0.1),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(
-              icon,
-              color: color,
-              size: 20,
-            ),
+            child: Icon(icon, color: color, size: 20),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -469,7 +483,7 @@ class EditProfileForm extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
-            
+
             // Title
             Row(
               children: [
@@ -501,7 +515,7 @@ class EditProfileForm extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 24),
-            
+
             // Form Fields
             _buildTextField(
               controller: nameController,
@@ -527,7 +541,7 @@ class EditProfileForm extends StatelessWidget {
               icon: Icons.grade_outlined,
             ),
             const SizedBox(height: 32),
-            
+
             // Save Button
             Container(
               width: double.infinity,
@@ -595,7 +609,10 @@ class EditProfileForm extends StatelessWidget {
           ),
           prefixIcon: Icon(icon, color: Colors.purple.shade600),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 16,
+          ),
         ),
       ),
     );

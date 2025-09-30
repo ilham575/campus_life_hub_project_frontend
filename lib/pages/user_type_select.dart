@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'signup_student.dart';
 import 'signup_teacher.dart';
+import 'login.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter/gestures.dart';
 
 class UserTypeSelectPage extends StatelessWidget {
   const UserTypeSelectPage({super.key});
@@ -53,8 +56,55 @@ class UserTypeSelectPage extends StatelessWidget {
                   );
                 },
               ),
+              const SizedBox(height: 24),
+              _buildSigninLink(context),
             ],
           ),
+        ),
+      ),
+    );
+  }
+  Widget _buildSigninLink(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: RichText(
+        textAlign: TextAlign.center,
+        text: TextSpan(
+          children: [
+            TextSpan(
+              text: "มีบัญชีแล้ว? ",
+              style: GoogleFonts.poppins(
+                color: Colors.white.withOpacity(0.8),
+                fontSize: 16,
+              ),
+            ),
+            TextSpan(
+              text: "เข้าสู่ระบบ",
+              style: GoogleFonts.poppins(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 16,
+              ),
+              recognizer: TapGestureRecognizer()
+                ..onTap = () {
+                  Navigator.push(
+                    context,
+                    PageRouteBuilder(
+                      pageBuilder: (context, animation, secondaryAnimation) => Login(),
+                      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                        return SlideTransition(
+                          position: animation.drive(
+                            Tween(begin: const Offset(-1.0, 0.0), end: Offset.zero)
+                              .chain(CurveTween(curve: Curves.easeInOut)),
+                          ),
+                          child: child,
+                        );
+                      },
+                    ),
+                  );
+                },
+            ),
+          ],
         ),
       ),
     );
