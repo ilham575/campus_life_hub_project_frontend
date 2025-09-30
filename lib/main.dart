@@ -9,6 +9,7 @@ import 'package:campus_life_hub/pages/home.dart';
 import 'package:campus_life_hub/pages/timetable/timetable_state.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'pages/admin_page.dart';
+import 'pages/create_event.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -41,6 +42,7 @@ class MyApp extends StatelessWidget {
       routes: {
         '/home': (context) => const Home(),
         '/admin': (context) => const AdminPage(),
+        '/create_event': (context) => const CreateEventPage(), 
       },
     );
   }

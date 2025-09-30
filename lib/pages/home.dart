@@ -8,6 +8,13 @@ import 'package:campus_life_hub/pages/timetable/timetable.dart';
 import 'package:provider/provider.dart';
 import 'package:campus_life_hub/pages/timetable/timetable_state.dart';
 import 'package:campus_life_hub/pages/campus_map.dart';
+<<<<<<< HEAD
+=======
+import 'package:campus_life_hub/pages/create_event.dart';
+
+import 'package:firebase_auth/firebase_auth.dart';
+
+>>>>>>> 21ab752820c9fd4eb6633efbc04a3e45fa856f68
 
 class Home extends StatefulWidget {
   const Home({super.key});
@@ -336,6 +343,7 @@ class _HomeState extends State<Home> {
           ),
         ),
       ),
+      CreateEventPage(),
       TimetablePage(userId: _currentUserId.toString()),
       CampusMapPage(), // เพิ่มหน้าแผนที่มหาวิทยาลัย
       ProfilePage(),
