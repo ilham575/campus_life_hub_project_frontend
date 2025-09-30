@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class CampusMapPage extends StatefulWidget {
   const CampusMapPage({super.key});
@@ -10,25 +11,11 @@ class CampusMapPage extends StatefulWidget {
   State<CampusMapPage> createState() => _CampusMapPageState();
 }
 
-class _CampusMapPageState extends State<CampusMapPage> with TickerProviderStateMixin {
-  final LatLng campusCenter = const LatLng(7.007122696337987, 100.50075696301798);
+class _CampusMapPageState extends State<CampusMapPage>
+    with TickerProviderStateMixin {
+  final LatLng campusCenter =
+      const LatLng(7.007122696337987, 100.50075696301798);
 
-  final List<Map<String, dynamic>> places = const [
-    {
-      'name': 'อาคารเรียนหลัก',
-      'latlng': LatLng(7.007341788783633, 100.5021173170882),
-      'desc': 'อาคารเรียนและสำนักงาน',
-      'icon': Icons.school,
-    },
-    {
-      'name': 'โรงอาหาร',
-      'latlng': LatLng(7.0115954288847515, 100.49968179163068),
-      'desc': 'โรงอาหารกลาง',
-      'icon': Icons.restaurant,
-    },
-  ];
-
-  LatLng? myLocation;
   GoogleMapController? mapController;
   Set<Marker> markers = {};
   bool isLoadingLocation = false;
@@ -37,7 +24,7 @@ class _CampusMapPageState extends State<CampusMapPage> with TickerProviderStateM
   @override
   void initState() {
     super.initState();
-    _createMarkers();
+    fetchSavedLocations(); // โหลดสถานที่ที่บันทึกไว้จาก server
     _fabController = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
@@ -50,32 +37,72 @@ class _CampusMapPageState extends State<CampusMapPage> with TickerProviderStateM
     super.dispose();
   }
 
-  void _createMarkers() {
-    markers = places.map((place) {
-      return Marker(
-        markerId: MarkerId(place['name']),
-        position: place['latlng'],
-        infoWindow: InfoWindow(
-          title: place['name'],
-          snippet: place['desc'],
-        ),
-        onTap: () => _navigateTo(place['latlng']),
-      );
-    }).toSet();
-  }
+  void _onMarkerTap(Map<String, dynamic> place) {
+    final TextEditingController nameController = TextEditingController();
+    final TextEditingController descController = TextEditingController();
 
-  void _navigateTo(LatLng latlng) async {
-    final url = 'https://www.google.com/maps/search/?api=1&query=${latlng.latitude},${latlng.longitude}';
-    if (await canLaunchUrl(Uri.parse(url))) {
-      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-    }
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('บันทึกสถานที่'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              decoration: const InputDecoration(
+                labelText: 'ชื่อสถานที่',
+                hintText: 'กรอกชื่อสถานที่',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: descController,
+              decoration: const InputDecoration(
+                labelText: 'คำอธิบาย',
+                hintText: 'กรอกคำอธิบายสถานที่',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('ยกเลิก'),
+          ),
+          TextButton(
+            onPressed: () async {
+              final name = nameController.text.trim();
+              final desc = descController.text.trim();
+
+              if (name.isEmpty) {
+                _showSnackBar('กรุณากรอกชื่อสถานที่', Icons.error, Colors.red);
+                return;
+              }
+
+              Navigator.pop(context);
+
+              // อัปเดตข้อมูลสถานที่ด้วยค่าที่ผู้ใช้กรอก
+              place['name'] = name;
+              place['desc'] = desc;
+
+              await savePlaceToDatabase(place); // บันทึกไปยัง backend
+              await fetchSavedLocations(); // รีเฟรช marker ใหม่จาก server
+            },
+            child: const Text('บันทึก'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _findMyLocation() async {
     setState(() {
       isLoadingLocation = true;
     });
-    
+
     _fabController.forward();
 
     try {
@@ -85,7 +112,7 @@ class _CampusMapPageState extends State<CampusMapPage> with TickerProviderStateM
         await Geolocator.openLocationSettings();
         return;
       }
-      
+
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
@@ -103,9 +130,8 @@ class _CampusMapPageState extends State<CampusMapPage> with TickerProviderStateM
         desiredAccuracy: LocationAccuracy.high,
       );
       final newLocation = LatLng(position.latitude, position.longitude);
-      
+
       setState(() {
-        myLocation = newLocation;
         markers.removeWhere((marker) => marker.markerId.value == 'my_location');
         markers.add(
           Marker(
@@ -116,11 +142,11 @@ class _CampusMapPageState extends State<CampusMapPage> with TickerProviderStateM
           ),
         );
       });
-      
+
       await mapController?.animateCamera(
         CameraUpdate.newLatLngZoom(newLocation, 18),
       );
-      
+
       _showSnackBar('พบตำแหน่งของคุณแล้ว', Icons.location_on, Colors.green);
     } catch (e) {
       _showSnackBar('ไม่สามารถหาตำแหน่งได้', Icons.error, Colors.red);
@@ -150,53 +176,98 @@ class _CampusMapPageState extends State<CampusMapPage> with TickerProviderStateM
     );
   }
 
-  void _showPlacesList() {
-    showModalBottomSheet(
+  // ✅ ฟังก์ชันบันทึกสถานที่ลง FastAPI
+  Future<void> savePlaceToDatabase(Map<String, dynamic> place) async {
+    final url = Uri.parse('http://10.0.2.2:8000/locations/');
+    final body = {
+      'name': place['name'],
+      'latitude': (place['latlng'] as LatLng).latitude,
+      'longitude': (place['latlng'] as LatLng).longitude,
+      'description': place['desc'],
+    };
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(body),
+      );
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        _showSnackBar('บันทึกสถานที่สำเร็จ', Icons.check_circle, Colors.green);
+      } else {
+        _showSnackBar('บันทึกสถานที่ล้มเหลว: ${response.body}', Icons.error, Colors.red);
+      }
+    } catch (e) {
+      _showSnackBar('เกิดข้อผิดพลาดในการเชื่อมต่อ: $e', Icons.error, Colors.red);
+    }
+  }
+
+  // ✅ ฟังก์ชันดึงสถานที่ที่บันทึกจาก server
+  Future<void> fetchSavedLocations() async {
+    final url = Uri.parse('http://10.0.2.2:8000/locations/all');
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        setState(() {
+          markers = data.map((location) {
+            final id = location['id']; // ✅ ใช้ id จาก backend
+            return Marker(
+              markerId: MarkerId(id.toString()),
+              position: LatLng(location['latitude'], location['longitude']),
+              infoWindow: InfoWindow(
+                title: location['name'],
+                snippet: location['description'],
+                onTap: () => _onDeleteMarker(id), // ✅ ใช้ id
+              ),
+            );
+          }).toSet();
+        });
+      } else {
+        _showSnackBar('ไม่สามารถดึงข้อมูลสถานที่ได้: ${response.body}', Icons.error, Colors.red);
+      }
+    } catch (e) {
+      _showSnackBar('เกิดข้อผิดพลาดในการเชื่อมต่อ: $e', Icons.error, Colors.red);
+    }
+  }
+
+  Future<void> _onDeleteMarker(int markerId) async {
+    showDialog(
       context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              margin: const EdgeInsets.symmetric(vertical: 8),
-              height: 4,
-              width: 40,
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const Padding(
-              padding: EdgeInsets.all(16),
-              child: Text(
-                'สถานที่ในมหาวิทยาลัย',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-            ),
-            ...places.map((place) => ListTile(
-              leading: CircleAvatar(
-                backgroundColor: Colors.deepPurple.shade100,
-                child: Icon(place['icon'], color: Colors.deepPurple),
-              ),
-              title: Text(place['name']),
-              subtitle: Text(place['desc']),
-              onTap: () {
-                Navigator.pop(context);
-                mapController?.animateCamera(
-                  CameraUpdate.newLatLngZoom(place['latlng'], 18),
-                );
-              },
-            )),
-            const SizedBox(height: 20),
-          ],
-        ),
+      builder: (context) => AlertDialog(
+        title: const Text('ลบสถานที่'),
+        content: const Text('คุณต้องการลบสถานที่นี้หรือไม่?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('ยกเลิก'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await deletePlaceFromDatabase(markerId);
+              setState(() {
+                markers.removeWhere((marker) => marker.markerId.value == markerId.toString());
+              });
+            },
+            child: const Text('ลบ'),
+          ),
+        ],
       ),
     );
+  }
+
+  Future<void> deletePlaceFromDatabase(int markerId) async {
+    final url = Uri.parse('http://10.0.2.2:8000/locations/$markerId');
+    try {
+      final response = await http.delete(url);
+      if (response.statusCode == 200) {
+        _showSnackBar('ลบสถานที่สำเร็จ', Icons.check_circle, Colors.green);
+      } else {
+        _showSnackBar('ลบสถานที่ล้มเหลว: ${response.body}', Icons.error, Colors.red);
+      }
+    } catch (e) {
+      _showSnackBar('เกิดข้อผิดพลาดในการเชื่อมต่อ: $e', Icons.error, Colors.red);
+    }
   }
 
   @override
@@ -204,18 +275,11 @@ class _CampusMapPageState extends State<CampusMapPage> with TickerProviderStateM
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('แผนที่มหาวิทยาลัย', 
-          style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white)),
+        title: const Text('แผนที่มหาวิทยาลัย',
+            style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white)),
         backgroundColor: Colors.deepPurple.withOpacity(0.9),
         elevation: 0,
         centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.list_alt_rounded, color: Colors.white),
-            tooltip: 'รายการสถานที่',
-            onPressed: _showPlacesList,
-          ),
-        ],
       ),
       body: Stack(
         children: [
@@ -232,6 +296,15 @@ class _CampusMapPageState extends State<CampusMapPage> with TickerProviderStateM
             myLocationButtonEnabled: false,
             zoomControlsEnabled: false,
             mapToolbarEnabled: false,
+            onTap: (latlng) {
+              final place = {
+                'name': "สถานที่ที่เลือก",
+                'latlng': latlng,
+                'desc': 'เลือกจากแผนที่',
+              };
+
+              _onMarkerTap(place);
+            },
           ),
           Positioned(
             top: MediaQuery.of(context).padding.top + 70,
@@ -266,16 +339,16 @@ class _CampusMapPageState extends State<CampusMapPage> with TickerProviderStateM
               backgroundColor: Colors.deepPurple,
               foregroundColor: Colors.white,
               elevation: 8,
-              icon: isLoadingLocation 
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    ),
-                  )
-                : const Icon(Icons.my_location),
+              icon: isLoadingLocation
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : const Icon(Icons.my_location),
               label: Text(
                 isLoadingLocation ? 'กำลังค้นหา...' : 'ตำแหน่งของฉัน',
                 style: const TextStyle(fontWeight: FontWeight.w600),
@@ -288,7 +361,8 @@ class _CampusMapPageState extends State<CampusMapPage> with TickerProviderStateM
     );
   }
 
-  Widget _buildControlButton({required IconData icon, required VoidCallback onPressed}) {
+  Widget _buildControlButton(
+      {required IconData icon, required VoidCallback onPressed}) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,

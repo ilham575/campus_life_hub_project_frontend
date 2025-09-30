@@ -1,29 +1,62 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+
+class Schedule {
+  int? id;
+  String day;
+  String startTime;
+  String endTime;
+
+  Schedule({this.id, required this.day, required this.startTime, required this.endTime});
+
+  factory Schedule.fromJson(Map<String, dynamic> json) {
+    return Schedule(
+      id: json["id"],
+      day: json["day"],
+      startTime: json["start_time"],
+      endTime: json["end_time"],
+    );
+  }
+}
+
+class Subject {
+  int id;
+  String name;
+  List<Schedule> schedules;
+
+  Subject({required this.id, required this.name, required this.schedules});
+
+  factory Subject.fromJson(Map<String, dynamic> json) {
+    return Subject(
+      id: json["id"],
+      name: json["name"],
+      schedules: (json["schedules"] as List).map((s) => Schedule.fromJson(s)).toList(),
+    );
+  }
+}
 
 class TimetableState with ChangeNotifier {
   bool isGrid = false;
   late String selectedWeekday;
 
-  // ✅ ใช้ 10.0.2.2 สำหรับ Android Emulator (แทน localhost)
-  final String apiUrl = "http://10.0.2.2:8000/timetable";
+  // ✅ base url ไม่ใส่ / ปิดท้าย
+  final String apiUrl = "http://10.0.2.2:8000/subjects";
 
-  final List<String> days = ['จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์'];
-  final List<String> times = [
-    '08:00-09:00',
-    '09:00-10:00',
-    '10:00-11:00',
-    '11:00-12:00',
-    '13:00-14:00',
-    '14:00-15:00',
-    '15:00-16:00',
+  final List<String> days = [
+    'จันทร์',
+    'อังคาร',
+    'พุธ',
+    'พฤหัสบดี',
+    'ศุกร์',
+    'เสาร์',
+    'อาทิตย์'
   ];
 
-  final Map<String, String> _subjects = {}; // key = "day|time" → subject
-  final Map<String, int> _ids = {};         // key = "day|time" → id
 
-  Map<String, String> get subjects => _subjects;
+  List<Subject> _subjects = [];
+  List<Subject> get subjects => _subjects;
 
   TimetableState() {
     selectedWeekday = _getTodayThaiName();
@@ -42,24 +75,34 @@ class TimetableState with ChangeNotifier {
         return 'พฤหัสบดี';
       case DateTime.friday:
         return 'ศุกร์';
+      case DateTime.saturday:
+        return 'เสาร์';
+      case DateTime.sunday:
+        return 'อาทิตย์';
       default:
         return 'จันทร์';
     }
   }
 
-  /// โหลดข้อมูลจาก API
+
+  Future<Map<String, String>> _getHeaders() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString("token");
+    final headers = {"Content-Type": "application/json"};
+    if (token != null) {
+      headers["Authorization"] = "Bearer $token";
+    }
+    return headers;
+  }
+
+  // ✅ รับ userId แล้วส่งไปที่ path
   Future<void> loadFromApi(String userId) async {
     try {
-      final res = await http.get(Uri.parse("$apiUrl/$userId"));
+      final headers = await _getHeaders();
+      final res = await http.get(Uri.parse("$apiUrl/$userId"), headers: headers);
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
-        _subjects.clear();
-        _ids.clear();
-        for (var item in data) {
-          final key = "${item['day']}|${item['time']}";
-          _subjects[key] = item['subject'];
-          _ids[key] = item['id'];
-        }
+        _subjects = (data as List).map((s) => Subject.fromJson(s)).toList();
         notifyListeners();
       } else {
         debugPrint("โหลดตารางล้มเหลว: ${res.statusCode} ${res.body}");
@@ -69,74 +112,134 @@ class TimetableState with ChangeNotifier {
     }
   }
 
-  /// เพิ่มหรือแก้ไขวิชา
-  Future<void> updateSubject(
-      String userId, String day, String time, String subject) async {
-    final key = '$day|$time';
-    final id = _ids[key]; // mapping day|time → id
+  Future<void> addSubject(String name, List<Schedule> schedules, String userId) async {
+    final headers = await _getHeaders();
+    final body = {
+      "name": name,
+      "schedules": schedules
+          .map((s) => {
+                "user_id": userId,
+                "day": s.day,
+                "start_time": s.startTime,
+                "end_time": s.endTime,
+              })
+          .toList()
+    };
 
-    if (id != null) {
-      // ✅ PUT แก้ไข
-      final res = await http.put(
-        Uri.parse("$apiUrl/$id"),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({
-          "user_id": userId,
-          "day": day,
-          "time": time,
-          "subject": subject,
-        }),
-      );
+    final res = await http.post(Uri.parse("$apiUrl/"), headers: headers, body: jsonEncode(body));
 
-      if (res.statusCode == 200) {
-        _subjects[key] = subject;
+    if (res.statusCode == 200 || res.statusCode == 201) {
+      final data = jsonDecode(res.body);
+      _subjects.add(Subject.fromJson(data));
+      notifyListeners();
+    } else {
+      debugPrint("เพิ่มวิชาล้มเหลว: ${res.statusCode} ${res.body}");
+    }
+  }
+
+  Future<void> removeSubject(int subjectId) async {
+    final headers = await _getHeaders();
+    final res = await http.delete(Uri.parse("$apiUrl/$subjectId"), headers: headers);
+
+    if (res.statusCode == 200) {
+      _subjects.removeWhere((s) => s.id == subjectId);
+      notifyListeners();
+    } else {
+      debugPrint("ลบวิชาล้มเหลว: ${res.statusCode} ${res.body}");
+    }
+  }
+
+  Future<void> updateSubject(int subjectId, String name, List<Schedule> schedules, String userId) async {
+    final headers = await _getHeaders();
+    final body = {
+      "name": name,
+      "schedules": schedules
+          .map((s) => {
+                "user_id": userId,
+                "day": s.day,
+                "start_time": s.startTime,
+                "end_time": s.endTime,
+              })
+          .toList()
+    };
+
+    final res = await http.put(
+      Uri.parse("$apiUrl/$subjectId"),
+      headers: headers,
+      body: jsonEncode(body),
+    );
+
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body);
+      final index = _subjects.indexWhere((s) => s.id == subjectId);
+      if (index != -1) {
+        _subjects[index] = Subject.fromJson(data);
         notifyListeners();
-      } else {
-        debugPrint("แก้ไขวิชาล้มเหลว: ${res.statusCode} ${res.body}");
       }
     } else {
-      // ✅ POST เพิ่มใหม่
-      final res = await http.post(
-        Uri.parse(apiUrl),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({
-          "user_id": userId,
-          "day": day,
-          "time": time,
-          "subject": subject,
-        }),
-      );
-
-      if (res.statusCode == 200 || res.statusCode == 201) { // 👈 รองรับทั้ง 200 และ 201
-        final data = jsonDecode(res.body);
-        _subjects[key] = subject;
-        _ids[key] = data["id"]; // ✅ เก็บ id ไว้ใช้ตอน update/delete
-        notifyListeners();
-      } else {
-        debugPrint("เพิ่มวิชาล้มเหลว: ${res.statusCode} ${res.body}");
-      }
+      debugPrint("แก้ไขวิชาล้มเหลว: ${res.statusCode} ${res.body}");
     }
   }
 
-  /// ลบวิชา
-  Future<void> removeSubject(int id, String day, String time) async {
+  Future<void> removeSchedule(int scheduleId) async {
+    final headers = await _getHeaders();
+    final res = await http.delete(Uri.parse("$apiUrl/schedule/$scheduleId"), headers: headers);
+
+    if (res.statusCode == 200) {
+      // เอาออกจาก state
+      for (var subj in _subjects) {
+        subj.schedules.removeWhere((s) => s.id == scheduleId);
+      }
+      notifyListeners();
+    } else {
+      debugPrint("ลบ schedule ล้มเหลว: ${res.statusCode} ${res.body}");
+    }
+  }
+
+  Future<void> loadUserTimetable() async {
     try {
-      final res = await http.delete(Uri.parse("$apiUrl/$id"));
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getString("user_id"); // ✅ เก็บ user_id ไว้ตอน login
+      if (userId == null) return;
+
+      final headers = await _getHeaders();
+      final res = await http.get(Uri.parse("$apiUrl/$userId"), headers: headers);
       if (res.statusCode == 200) {
-        final key = "$day|$time";
-        _subjects.remove(key);
-        _ids.remove(key);
+        final data = jsonDecode(res.body);
+        _subjects = (data as List).map((s) => Subject.fromJson(s)).toList();
         notifyListeners();
       } else {
-        debugPrint("ลบวิชาล้มเหลว: ${res.statusCode} ${res.body}");
+        debugPrint("โหลดตารางล้มเหลว: ${res.statusCode} ${res.body}");
       }
     } catch (e) {
-      debugPrint("error removeSubject: $e");
+      debugPrint("error loadFromApi: $e");
     }
   }
 
-  int? getIdFor(String day, String time) {
-    return _ids["$day|$time"];
+  Future<void> removeScheduleAndCheck(int scheduleId) async {
+    final headers = await _getHeaders();
+    final res = await http.delete(Uri.parse("$apiUrl/schedule/$scheduleId"), headers: headers);
+
+    if (res.statusCode == 200) {
+      Subject? foundSubject;
+
+      // 1. ลบ schedule ใน state
+      for (var subj in _subjects) {
+        subj.schedules.removeWhere((s) => s.id == scheduleId);
+        if (subj.schedules.isEmpty) {
+          foundSubject = subj; // เจอ subject ที่ไม่เหลือ schedule แล้ว
+        }
+      }
+
+      // 2. ถ้า subject ไม่มี schedule เหลือ → ลบออกเลย
+      if (foundSubject != null) {
+        await removeSubject(foundSubject.id);
+      }
+
+      notifyListeners();
+    } else {
+      debugPrint("ลบ schedule ล้มเหลว: ${res.statusCode} ${res.body}");
+    }
   }
 
   void toggleView() {

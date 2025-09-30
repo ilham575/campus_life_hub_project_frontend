@@ -310,10 +310,12 @@ class _NewsCardListState extends State<NewsCardList> with TickerProviderStateMix
       );
     }
 
-    final categories = ['ทั้งหมด', ...announcements.map((e) => e['category'] as String).toSet()];
+    final categories = ['ทั้งหมด', 'บันทึกไว้', ...announcements.map((e) => e['category'] as String).toSet()];
     final filtered = selectedCategory == 'ทั้งหมด'
         ? announcements
-        : announcements.where((a) => a['category'] == selectedCategory).toList();
+        : selectedCategory == 'บันทึกไว้'
+            ? announcements.where((a) => bookmarkedAnnouncementIds.contains(a['id'])).toList()
+            : announcements.where((a) => a['category'] == selectedCategory).toList();
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),

@@ -227,7 +227,7 @@ class Login extends StatelessWidget {
     );
   }
 
-    Widget _buildModernPasswordField() {
+  Widget _buildModernPasswordField() {
       return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
