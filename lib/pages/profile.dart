@@ -149,7 +149,7 @@ class ProfilePage extends StatelessWidget {
                           faculty: data['faculty'] ?? '',
                           year: data['year']?.toString() ?? '',
                           email: data['username'] ?? '',
-                          role: data['role'] ?? '',
+                          roles: (data['roles'] as List<dynamic>?)?.cast<String>() ?? [],
                           onEdit: () async {
                             final result = await showModalBottomSheet<bool>(
                               context: context,
@@ -175,8 +175,7 @@ class ProfilePage extends StatelessWidget {
                                   facultyController: facultyController,
                                   yearController: yearController,
                                   onSave: () async {
-                                    bool
-                                    success = await AuthService().updateProfile(
+                                    bool success = await AuthService().updateProfile(
                                       name: nameController.text.isNotEmpty
                                           ? nameController.text
                                           : null,
@@ -194,9 +193,7 @@ class ProfilePage extends StatelessWidget {
                                     if (success) {
                                       Navigator.pop(context, true);
                                     } else {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
+                                      ScaffoldMessenger.of(context).showSnackBar(
                                         const SnackBar(
                                           content: Text('ไม่สามารถอัพเดตได้'),
                                         ),
@@ -231,7 +228,7 @@ class UserInfoCard extends StatelessWidget {
   final String faculty;
   final String year;
   final String email;
-  final String role;
+  final List<String> roles;
   final VoidCallback onEdit;
 
   const UserInfoCard({
@@ -241,7 +238,7 @@ class UserInfoCard extends StatelessWidget {
     required this.faculty,
     required this.year,
     required this.email,
-    required this.role,
+    required this.roles,
     required this.onEdit,
   });
 
@@ -303,23 +300,20 @@ class UserInfoCard extends StatelessWidget {
             ),
             const SizedBox(height: 20),
 
-            // Info Cards
-            if (role == 'student') ...[
-              _buildInfoCard(
-                icon: Icons.badge_outlined,
-                title: 'รหัสนักศึกษา',
-                value: studentId.isNotEmpty ? studentId : 'ไม่ระบุ',
-                color: Colors.blue,
-              ),
-              const SizedBox(height: 12),
-              _buildInfoCard(
-                icon: Icons.grade_outlined,
-                title: 'ชั้นปี',
-                value: year.isNotEmpty ? 'ปีที่ $year' : 'ไม่ระบุ',
-                color: Colors.orange,
-              ),
-            ],
-
+            // Info Cards (แสดงทุกคน)
+            _buildInfoCard(
+              icon: Icons.badge_outlined,
+              title: 'รหัสนักศึกษา',
+              value: studentId.isNotEmpty ? studentId : 'ไม่ระบุ',
+              color: Colors.blue,
+            ),
+            const SizedBox(height: 12),
+            _buildInfoCard(
+              icon: Icons.grade_outlined,
+              title: 'ชั้นปี',
+              value: year.isNotEmpty ? 'ปีที่ $year' : 'ไม่ระบุ',
+              color: Colors.orange,
+            ),
             const SizedBox(height: 12),
             _buildInfoCard(
               icon: Icons.school_outlined,

@@ -106,8 +106,6 @@ class Signup extends StatelessWidget {
                       const SizedBox(height: 20),
                       _buildPasswordField(),
                       const SizedBox(height: 20),
-                      _buildRoleDropdown(), // <<== เพิ่มตรงนี้
-                      const SizedBox(height: 32),
                       _buildModernSignupButton(context),
                     ],
                   ),
@@ -182,37 +180,6 @@ class Signup extends StatelessWidget {
               border: InputBorder.none,
               contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildRoleDropdown() {
-    return ValueListenableBuilder<String>(
-      valueListenable: _role,
-      builder: (context, value, _) {
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF8F9FA),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.grey.withOpacity(0.1)),
-          ),
-          child: DropdownButton<String>(
-            value: value,
-            isExpanded: true,
-            underline: const SizedBox(),
-            icon: const Icon(Icons.arrow_drop_down),
-            items: const [
-              DropdownMenuItem(value: 'user', child: Text('ผู้ใช้ทั่วไป')),
-              DropdownMenuItem(value: 'student', child: Text('นักศึกษา')),
-              DropdownMenuItem(value: 'teacher', child: Text('อาจารย์')),
-              DropdownMenuItem(value: 'admin', child: Text('ผู้ดูแลระบบ')),
-            ],
-            onChanged: (val) {
-              if (val != null) _role.value = val;
-            },
           ),
         );
       },
