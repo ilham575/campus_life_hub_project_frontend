@@ -340,7 +340,7 @@ class _HomeState extends State<Home> {
           ),
         ),
       ),
-      CreateEventPage(),
+      CreateEventScreen(userId: _currentUserId.toString()),
       TimetablePage(userId: _currentUserId.toString()),
       CampusMapPage(), // เพิ่มหน้าแผนที่มหาวิทยาลัย
       ProfilePage(),
