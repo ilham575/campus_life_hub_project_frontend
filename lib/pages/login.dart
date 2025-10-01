@@ -1,7 +1,8 @@
 import 'package:campus_life_hub/services/auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'user_type_select.dart'; // ใช้หน้าเลือกประเภท
+//import 'user_type_select.dart'; // ใช้หน้าเลือกประเภท
+import 'signup.dart';
 
 class Login extends StatelessWidget {
   Login({super.key});
@@ -77,27 +78,6 @@ class Login extends StatelessWidget {
                       margin: const EdgeInsets.only(top: 60, bottom: 40),
                       child: Column(
                         children: [
-                          // Back Button (only if can pop)
-                          /* if (Navigator.canPop(context))
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child: GestureDetector(
-                                onTap: () => Navigator.pop(context),
-                                child: Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.2),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: const Icon(
-                                    Icons.arrow_back_ios_new_rounded,
-                                    color: Colors.white,
-                                    size: 20,
-                                  ),
-                                ),
-                              ),
-                            ), */
-                          
                           const SizedBox(height: 40),
                           
                           // Logo/Icon
@@ -408,7 +388,7 @@ class Login extends StatelessWidget {
         onPressed: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => const UserTypeSelectPage()),
+            MaterialPageRoute(builder: (context) => Signup()),
           );
         },
         child: Text(
