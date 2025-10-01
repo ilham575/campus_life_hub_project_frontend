@@ -9,7 +9,12 @@ import 'package:provider/provider.dart';
 import 'package:campus_life_hub/pages/timetable/timetable_state.dart';
 import 'package:campus_life_hub/pages/campus_map.dart';
 import 'package:campus_life_hub/pages/create_event.dart';
+import 'package:campus_life_hub/pages/create_announcement.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:intl/intl.dart';
 
+const String backendUrl = 'http://10.0.2.2:8000';
 
 class Home extends StatefulWidget {
   const Home({super.key});
@@ -44,7 +49,6 @@ class _HomeState extends State<Home> {
           _isLoading = false;
         });
       } else {
-        // ถ้าไม่มีข้อมูล user หรือ token หมดอายุ
         setState(() {
           _isLoading = false;
         });
@@ -269,6 +273,8 @@ class _HomeState extends State<Home> {
   Widget build(BuildContext context) {
     final List<Widget> _pages = [
       Container(
+        width: double.infinity,
+        height: double.infinity,
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
@@ -281,71 +287,87 @@ class _HomeState extends State<Home> {
           ),
         ),
         child: SafeArea(
+          bottom: false,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header Card - ใช้ widget แยกต่างหาก
-                _buildUserHeader(),
-                const SizedBox(height: 32),
-                
-                // News Section Header
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.deepPurple.shade100,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(
-                        Icons.newspaper,
-                        color: Colors.deepPurple.shade700,
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      "ข่าวประกาศล่าสุด",
-                      style: GoogleFonts.kanit(
-                        textStyle: TextStyle(
+            padding: const EdgeInsets.only(top: 16, left: 20, right: 20), // ลด padding ซ้าย-ขวา
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header Card
+                  _buildUserHeader(),
+                  const SizedBox(height: 32),
+                  
+                  // News Section Header
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.deepPurple.shade100,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          Icons.newspaper,
                           color: Colors.deepPurple.shade700,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 20,
+                          size: 24,
                         ),
                       ),
-                    ),
-                    const Spacer(),
-                    // Refresh button
-                    // IconButton(
-                    //   onPressed: _loadCurrentUser,
-                    //   icon: Icon(
-                    //     Icons.refresh,
-                    //     color: Colors.deepPurple.shade700,
-                    //   ),
-                    //   tooltip: 'รีเฟรชข้อมูล',
-                    // ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                
-                // News List
-                const Expanded(child: NewsCardList()),
-                const SizedBox(height: 20),
-              ],
+                      const SizedBox(width: 12),
+                      Text(
+                        "ข่าวประกาศล่าสุด",
+                        style: GoogleFonts.kanit(
+                          textStyle: TextStyle(
+                            color: Colors.deepPurple.shade700,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 20,
+                          ),
+                        ),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        onPressed: () async {
+                          final result = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const CreateAnnouncementPage(),
+                            ),
+                          );
+                          if (result == true) {
+                            _loadCurrentUser();
+                          }
+                        },
+                        icon: Icon(
+                          Icons.add_circle_outline,
+                          color: Colors.deepPurple.shade700,
+                        ),
+                        tooltip: 'สร้างข่าวสาร',
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  // News List - ขยายให้เต็มพื้นที่
+                  SizedBox(
+                    width: double.infinity, // ให้กว้างเต็มจอ
+                    height: MediaQuery.of(context).size.height * 0.5, // ใช้ความสูงตามหน้าจอ
+                    child: NewsCardList(currentUserId: _currentUserId),
+                  ),
+                  SizedBox(height: MediaQuery.of(context).padding.bottom + 80), // เพิ่มพื้นที่ให้พอดีกับ navbar
+                ],
+              ),
             ),
           ),
         ),
       ),
       CreateEventScreen(userId: _currentUserId.toString()),
       TimetablePage(userId: _currentUserId.toString()),
-      CampusMapPage(), // เพิ่มหน้าแผนที่มหาวิทยาลัย
+      CampusMapPage(),
       ProfilePage(),
     ];
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.transparent,
       body: Stack(
         children: [
           _pages[_selectedIndex],
@@ -407,6 +429,32 @@ class _HomeState extends State<Home> {
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
       ),
+    );
+  }
+}
+
+class Event {
+  final int? id;
+  final String title;
+  final String? description;
+  final DateTime start;
+  final DateTime end;
+
+  Event({
+    this.id,
+    required this.title,
+    this.description,
+    required this.start,
+    required this.end,
+  });
+
+  factory Event.fromJson(Map<String, dynamic> json) {
+    return Event(
+      id: json['id'],
+      title: json['title'],
+      description: json['description'],
+      start: DateTime.parse(json['start_time']),
+      end: DateTime.parse(json['end_time']),
     );
   }
 }

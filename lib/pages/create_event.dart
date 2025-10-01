@@ -115,12 +115,17 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     if (edited != null && event.id != null && _userId.isNotEmpty) {
       try {
         final res = await http.put(
-          Uri.parse('$apiUrl${event.id}'),
+          Uri.parse('$apiUrl${event.id}?user_id=$_userId'), // เพิ่ม ?user_id=$_userId
           headers: {'Content-Type': 'application/json'},
           body: json.encode(edited.toJson(userId: _userId)),
         );
         if (res.statusCode == 200) {
           _loadEvents();
+        } else {
+          // เพิ่ม error handling
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('แก้ไขกิจกรรมล้มเหลว: ${res.statusCode}')),
+          );
         }
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -366,7 +371,7 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
                           ),
                         ),
                       );
-                    },
+                      },
                   ),
       ),
     );
