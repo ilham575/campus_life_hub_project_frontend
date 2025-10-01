@@ -9,13 +9,15 @@ class Signup extends StatelessWidget {
 
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _studentIdController = TextEditingController();
   final TextEditingController _facultyController = TextEditingController();
   final TextEditingController _yearController = TextEditingController();
 
   final ValueNotifier<bool> _obscurePassword = ValueNotifier<bool>(true);
-  final ValueNotifier<String> _role = ValueNotifier<String>('user'); // เพิ่มตัวแปร role
+  final ValueNotifier<String> _role = ValueNotifier<String>('user');
+  final ValueNotifier<bool> _acceptedPolicy = ValueNotifier<bool>(false);
 
   @override
   Widget build(BuildContext context) {
@@ -106,6 +108,8 @@ class Signup extends StatelessWidget {
                       const SizedBox(height: 20),
                       _buildPasswordField(),
                       const SizedBox(height: 20),
+                      _buildPolicyCheckbox(),
+                      const SizedBox(height: 20),
                       _buildModernSignupButton(context),
                     ],
                   ),
@@ -147,40 +151,105 @@ class Signup extends StatelessWidget {
   }
 
   Widget _buildPasswordField() {
-    return ValueListenableBuilder<bool>(
-      valueListenable: _obscurePassword,
-      builder: (context, obscure, _) {
-        return Container(
-          decoration: BoxDecoration(
-            color: const Color(0xFFF8F9FA),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.grey.withOpacity(0.1)),
-          ),
-          child: TextField(
-            controller: _passwordController,
-            obscureText: obscure,
-            style: GoogleFonts.poppins(fontSize: 16),
-            decoration: InputDecoration(
-              labelText: 'รหัสผ่าน',
-              labelStyle: GoogleFonts.poppins(
-                color: Colors.grey[600],
-                fontSize: 14,
-              ),
-              prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFF667eea), size: 22),
-              suffixIcon: IconButton(
-                icon: Icon(
-                  obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                  color: Colors.grey[600],
-                  size: 22,
+  return ValueListenableBuilder<bool>(
+    valueListenable: _obscurePassword,
+    builder: (context, obscure, _) {
+      final ValueNotifier<bool> _obscureConfirm = ValueNotifier<bool>(true);
+      return Column(
+        children: [
+          // Password
+          Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8F9FA),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey.withOpacity(0.1)),
+            ),
+            child: TextField(
+              controller: _passwordController,
+              obscureText: obscure,
+              style: GoogleFonts.poppins(fontSize: 16),
+              decoration: InputDecoration(
+                labelText: 'รหัสผ่าน',
+                labelStyle: GoogleFonts.poppins(color: Colors.grey[600], fontSize: 14),
+                prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFF667eea), size: 22),
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                    color: Colors.grey[600],
+                    size: 22,
+                  ),
+                  onPressed: () {
+                    _obscurePassword.value = !obscure;
+                  },
                 ),
-                onPressed: () {
-                  _obscurePassword.value = !obscure;
-                },
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
               ),
-              border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             ),
           ),
+          const SizedBox(height: 20),
+          // Confirm Password
+          ValueListenableBuilder<bool>(
+            valueListenable: _obscureConfirm,
+            builder: (context, obscureC, _) {
+              return Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8F9FA),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.grey.withOpacity(0.1)),
+                ),
+                child: TextField(
+                  controller: _confirmPasswordController,
+                  obscureText: obscureC,
+                  style: GoogleFonts.poppins(fontSize: 16),
+                  decoration: InputDecoration(
+                    labelText: 'ยืนยันรหัสผ่าน',
+                    labelStyle: GoogleFonts.poppins(color: Colors.grey[600], fontSize: 14),
+                    prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFF667eea), size: 22),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        obscureC ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                        color: Colors.grey[600],
+                        size: 22,
+                      ),
+                      onPressed: () {
+                        _obscureConfirm.value = !obscureC;
+                      },
+                    ),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      );
+    },
+  );
+}
+
+
+  Widget _buildPolicyCheckbox() {
+    return ValueListenableBuilder<bool>(
+      valueListenable: _acceptedPolicy,
+      builder: (context, accepted, _) {
+        return Row(
+          children: [
+            Checkbox(
+              value: accepted,
+              onChanged: (value) {
+                _acceptedPolicy.value = value ?? false;
+              },
+              activeColor: const Color(0xFF667eea),
+            ),
+            Expanded(
+              child: Text(
+                "ฉันยอมรับนโยบายและข้อกำหนดของแอพ",
+                style: GoogleFonts.poppins(fontSize: 14, color: const Color.fromARGB(255, 43, 39, 39)),
+              ),
+            ),
+          ],
         );
       },
     );
@@ -210,11 +279,34 @@ class Signup extends StatelessWidget {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         ),
         onPressed: () async {
-          // ตรวจสอบข้อมูลจำเป็น
           if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text('กรุณากรอกอีเมลและรหัสผ่าน', style: GoogleFonts.poppins()),
+                backgroundColor: Colors.red[400],
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            );
+            return;
+          }
+
+          if (_passwordController.text != _confirmPasswordController.text) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('รหัสผ่านไม่ตรงกัน', style: GoogleFonts.poppins()),
+                backgroundColor: Colors.red[400],
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            );
+            return;
+          }
+
+          if (!_acceptedPolicy.value) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('คุณต้องยอมรับนโยบายของแอพก่อน', style: GoogleFonts.poppins()),
                 backgroundColor: Colors.red[400],
                 behavior: SnackBarBehavior.floating,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -240,10 +332,9 @@ class Signup extends StatelessWidget {
               studentId: _studentIdController.text.isNotEmpty ? _studentIdController.text : null,
               faculty: _facultyController.text.isNotEmpty ? _facultyController.text : null,
               year: _yearController.text.isNotEmpty ? int.tryParse(_yearController.text) : null,
-              role: _role.value, // <<== ส่ง role ไป backend
+              role: _role.value,
             );
 
-            // ปิด loading dialog
             if (context.mounted) Navigator.pop(context);
 
             if (success) {
@@ -316,9 +407,8 @@ class Signup extends StatelessWidget {
               }
             }
           } catch (e) {
-            // ปิด loading dialog
             if (context.mounted) Navigator.pop(context);
-            
+
             if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
