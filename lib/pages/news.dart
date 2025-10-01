@@ -979,7 +979,18 @@ class _NewsCardListState extends State<NewsCardList> with TickerProviderStateMix
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12), // ลด radius จาก 16 เป็น 12
-        // ...existing code...
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03), // ลด opacity
+            spreadRadius: 0,
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+        border: Border.all(
+          color: Colors.grey.withOpacity(0.08), // ลด opacity
+          width: 1,
+        ),
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
@@ -1138,36 +1149,6 @@ class _NewsCardListState extends State<NewsCardList> with TickerProviderStateMix
                 ),
               ),
             ],
-            
-            // Event Action Buttons (Edit/Delete only for current user)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                _buildActionButton(
-                  icon: Icons.edit_outlined,
-                  label: 'แก้ไข',
-                  color: Colors.blue.shade600,
-                  onPressed: () async {
-                    final result = await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => CreateEventPage(event: event),
-                      ),
-                    );
-                    if (result != null) {
-                      loadData(); // Refresh the list
-                    }
-                  },
-                ),
-                const SizedBox(width: 8),
-                _buildActionButton(
-                  icon: Icons.delete_outline,
-                  label: 'ลบ',
-                  color: Colors.red.shade600,
-                  onPressed: () => _showDeleteEventConfirmDialog(event),
-                ),
-              ],
-            ),
           ],
         ),
       ),
