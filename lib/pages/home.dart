@@ -10,8 +10,6 @@ import 'package:campus_life_hub/pages/timetable/timetable_state.dart';
 import 'package:campus_life_hub/pages/campus_map.dart';
 import 'package:campus_life_hub/pages/create_event.dart';
 
-import 'package:firebase_auth/firebase_auth.dart';
-
 
 class Home extends StatefulWidget {
   const Home({super.key});

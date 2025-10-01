@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:campus_life_hub/services/auth_service.dart';
 import 'login.dart';
 import 'package:flutter/gestures.dart';
+import 'user_type_select.dart'; // เพิ่ม import
 
 class SignupStudent extends StatelessWidget {
   SignupStudent({super.key});
@@ -31,6 +32,24 @@ class SignupStudent extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
             child: Column(
               children: [
+                // ปุ่มย้อนกลับ
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    label: const Text('ย้อนกลับ', style: TextStyle(color: Colors.white)),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                    onPressed: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (context) => const UserTypeSelectPage()),
+                      );
+                    },
+                  ),
+                ),
                 // Header
                 Container(
                   margin: const EdgeInsets.only(top: 20, bottom: 40),
@@ -131,7 +150,7 @@ class SignupStudent extends StatelessWidget {
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         ),
-      ),
+      )
     );
   }
 
@@ -169,7 +188,7 @@ class SignupStudent extends StatelessWidget {
               border: InputBorder.none,
               contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             ),
-          ),
+          )
         );
       },
     );
